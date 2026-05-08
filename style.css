@@ -1,0 +1,253 @@
+/* ── Global reset ── */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    border: none;
+    outline: none;
+    font-family: Arial, sans-serif;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* ══════════════════════════════
+   TOP LANGUAGE BAR
+══════════════════════════════ */
+.top-bar {
+    background-color: #c9c9c9;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 8px 65px;
+    font-size: 15px;
+}
+
+.top-bar a {
+    color: #222;
+    font-size: 15px;
+}
+
+.top-bar a:hover {
+    text-decoration: underline;
+}
+
+.top-bar .divider {
+    color: #555;
+    margin: 0 14px;
+}
+
+/* ══════════════════════════════
+   MAIN HEADER
+══════════════════════════════ */
+.main-header {
+    background-color: #ffffff;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 18px 65px;
+    border-bottom: 2px solid #e8e8e8;
+    width: 100%;
+}
+
+/* ── Logo (far left) ── */
+.logo {
+    display: block;
+    text-decoration: none;
+    flex-shrink: 0;
+    line-height: 0;
+}
+
+.logo img {
+    display: block;
+    height: 110px;
+    width: auto;
+}
+
+/* ── Nav + Search grouped on the right ── */
+.nav-search-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 55px;
+    margin-left: auto;
+}
+
+/* ── Navigation ── */
+.main-nav {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 44px;
+    flex-shrink: 0;
+}
+
+.nav-link {
+    font-size: 19px;
+    font-weight: 500;
+    color: #222;
+    text-decoration: none;
+    cursor: pointer;
+    background: none;
+    padding: 0;
+    white-space: nowrap;
+}
+
+.nav-link.active {
+    color: #1a7cd4;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 6px;
+}
+
+.nav-link:hover {
+    color: #1a7cd4;
+}
+
+/* ── Data dropdown ── */
+.nav-dropdown-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.nav-dropdown-toggle {
+    font-size: 19px;
+    font-weight: 500;
+    color: #222;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    padding: 6px 0;
+}
+
+.nav-dropdown-toggle:hover {
+    color: #1a7cd4;
+}
+
+/* Invisible bridge: fills the gap between toggle and menu so hover stays active */
+.nav-dropdown-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: -30px;
+    right: -30px;
+    height: 18px;
+    background: transparent;
+}
+
+/* Dropdown panel */
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 18px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+    min-width: 360px;
+    z-index: 999;
+    overflow: hidden;
+    border: 1px solid #e8e8e8;
+}
+
+/* Small caret above dropdown */
+.dropdown-menu::before {
+    content: '';
+    position: absolute;
+    top: -7px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 13px;
+    height: 13px;
+    background: #ffffff;
+    border-left: 1px solid #e8e8e8;
+    border-top: 1px solid #e8e8e8;
+}
+
+.nav-dropdown-wrapper:hover .dropdown-menu {
+    display: block;
+}
+
+.dropdown-menu a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 22px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    text-decoration: none;
+    white-space: nowrap;
+    border-left: 3px solid transparent;
+}
+
+.dropdown-menu a:hover {
+    background-color: #f0f6ff;
+    color: #1a7cd4;
+    border-left: 3px solid #1a7cd4;
+}
+
+.dropdown-menu a + a {
+    border-top: 1px solid #f2f2f2;
+}
+
+.dropdown-menu a::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #1a7cd4;
+    flex-shrink: 0;
+    opacity: 0.45;
+}
+
+.dropdown-menu a:hover::before {
+    opacity: 1;
+}
+
+/* ── Search bar ── */
+.search-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border: 2px solid #333;
+    border-radius: 28px;
+    padding: 9px 8px 9px 18px;
+    width: 400px;
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.search-input {
+    flex: 1;
+    font-size: 16px;
+    color: #444;
+    background: transparent;
+    padding: 0;
+}
+
+.search-input::placeholder {
+    color: #bbb;
+    font-size: 16px;
+}
+
+.search-btn {
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-left: 10px;
+}
+
+.search-btn img {
+    display: block;
+    height: 24px;
+    width: auto;
+}
