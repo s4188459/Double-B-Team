@@ -251,3 +251,94 @@ a {
     height: 24px;
     width: auto;
 }
+
+/* ══════════════════════════════
+   HERO SECTION
+══════════════════════════════ */
+.hero {
+    position: relative;
+    width: 100%;
+    height: 115vh;
+    background-image: url('/images/Landing_Page_Image_For_Vaccination.jpg');
+    background-size: cover;
+    background-position: center 51%;
+    display: flex;
+    align-items: center;
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, rgba(0,0,0,0.22) 50%, rgba(0,0,0,0.0) 100%);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    padding-left: 90px;
+    max-width: 780px;
+}
+
+.hero-title {
+    font-size: 58px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.12;
+    margin-bottom: 36px;
+}
+
+.hero-desc {
+    font-size: 20px;
+    font-weight: 400;
+    color: #f0f0f0;
+    line-height: 1.75;
+    margin-bottom: 56px;
+}
+
+.hero-buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 24px;
+    align-items: center;
+}
+
+.btn-primary {
+    background-color: #1a7cd4;
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 18px 36px;
+    border-radius: 10px;
+    text-decoration: none;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.btn-primary:hover {
+    background-color: #155fa8;
+}
+
+.btn-outline {
+    background-color: #ffffff;
+    color: #1a7cd4;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 16px 34px;
+    border-radius: 10px;
+    border: 2px solid #1a7cd4;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.btn-outline:hover {
+    background-color: #f0f6ff;
+}
+
+.btn-icon {
+    height: 20px;
+    width: auto;
+    display: block;
+}

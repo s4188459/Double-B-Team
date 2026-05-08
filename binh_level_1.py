@@ -66,6 +66,19 @@ def get_page_html(form_data):
 
     </header>
 
+    <!-- Hero section -->
+    <section class="hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1 class="hero-title">Connecting the world<br>through reliable<br>vaccination data.</h1>
+            <p class="hero-desc">Discover insights on immunization coverage, disease<br>incidents and trends across countries, regions and<br>over time. Data from the World Health Organization<br>(2000 - 2025)</p>
+            <div class="hero-buttons">
+                <a href="/binh_page_2" class="btn-primary">Explore the Data &rarr;</a>
+                <a href="/bao_page_1" class="btn-outline">Learn More <img src="/images/icon_for_information.png" alt="info" class="btn-icon"></a>
+            </div>
+        </div>
+    </section>
+
 </body>
 </html>"""
     return page_html
