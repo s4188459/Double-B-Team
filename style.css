@@ -342,3 +342,322 @@ a {
     width: auto;
     display: block;
 }
+
+/* ══════════════════════════════
+   SNAPSHOT SECTION
+══════════════════════════════ */
+.snapshot-section {
+    padding: 48px 80px 24px;
+    background: #f4f6f9;
+}
+
+.snapshot-container {
+    background: #ffffff;
+    border: 1.5px solid #e0e4ea;
+    border-radius: 18px;
+    padding: 28px 32px 32px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
+}
+
+.snapshot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.snapshot-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a7cd4;
+}
+
+.methodology-wrapper {
+    position: relative;
+}
+
+.methodology-btn {
+    background: none;
+    color: #1a7cd4;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.methodology-btn:hover {
+    text-decoration: underline;
+}
+
+.methodology-popup {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #e0e4ea;
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.13);
+    padding: 20px 24px;
+    width: 380px;
+    z-index: 100;
+}
+
+.methodology-popup.active {
+    display: block;
+}
+
+.methodology-popup p {
+    font-size: 13px;
+    color: #444;
+    line-height: 1.65;
+    margin-bottom: 12px;
+}
+
+.methodology-popup p:last-child {
+    margin-bottom: 0;
+}
+
+/* ── Stat Cards ── */
+.snapshot-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.stat-card {
+    border: 1.5px solid #e8edf2;
+    border-radius: 14px;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: row;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.card-icon {
+    object-fit: contain;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: block;
+}
+
+/* Normalize circle size: portrait images (cards 1&2) need larger display to match square images */
+.snapshot-cards .stat-card:nth-child(1) .card-icon { width: 62px; height: 62px; }
+.snapshot-cards .stat-card:nth-child(2) .card-icon { width: 63px; height: 63px; }
+.snapshot-cards .stat-card:nth-child(3) .card-icon { width: 54px; height: 54px; }
+.snapshot-cards .stat-card:nth-child(4) .card-icon { width: 56px; height: 56px; }
+
+.card-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.card-number {
+    font-size: 28px;
+    font-weight: 800;
+    color: #111;
+    line-height: 1.1;
+    min-height: 34px;
+}
+
+.card-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111;
+    margin-top: 2px;
+    line-height: 1.3;
+}
+
+.card-desc {
+    font-size: 12px;
+    color: #777;
+    line-height: 1.5;
+    margin-top: 6px;
+    flex: 1;
+}
+
+.card-link {
+    color: #1a7cd4;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 12px;
+    display: block;
+    text-decoration: none;
+}
+
+.card-link:hover {
+    text-decoration: underline;
+}
+
+/* ══════════════════════════════
+   DISEASE COVERED SECTION
+══════════════════════════════ */
+.disease-section {
+    padding: 24px 80px 52px;
+    background: #f4f6f9;
+}
+
+.disease-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a7cd4;
+    margin-bottom: 20px;
+}
+
+.disease-grid {
+    display: flex;
+    flex-direction: row;
+    gap: 14px;
+}
+
+.disease-card {
+    border: 1.5px solid #e8edf2;
+    border-radius: 14px;
+    background: #ffffff;
+    padding: 28px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
+}
+
+.disease-icon {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+}
+
+.disease-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #222;
+    text-align: center;
+}
+
+/* ══════════════════════════════
+   FOOTER
+══════════════════════════════ */
+.site-footer {
+    background-color: #eeeeee;
+    padding: 48px 80px 0;
+}
+
+.footer-main {
+    display: flex;
+    flex-direction: row;
+    gap: 48px;
+    padding-bottom: 40px;
+    border-bottom: 1px solid #d0d0d0;
+}
+
+/* ── Brand column ── */
+.footer-brand {
+    flex: 0 0 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.footer-brand-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: #111;
+    line-height: 1.3;
+}
+
+.footer-brand-desc {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.65;
+}
+
+.footer-contacts {
+    display: flex;
+    flex-direction: row;
+    gap: 14px;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.footer-contact-icon img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    display: block;
+    opacity: 0.8;
+    mix-blend-mode: multiply;
+    filter: contrast(8);
+}
+
+.footer-contact-icon:hover img {
+    opacity: 1;
+}
+
+/* Email: double size */
+.footer-contact-icon:nth-child(1) img { width: 56px; height: 56px; }
+/* Location: double size + thicken thin stroke */
+.footer-contact-icon:nth-child(3) img {
+    width: 56px;
+    height: 56px;
+    filter: contrast(8) drop-shadow(0 0 1px rgba(0,0,0,0.5));
+}
+
+/* ── Nav columns ── */
+.footer-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.footer-col-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 6px;
+}
+
+.footer-link {
+    font-size: 13px;
+    color: #444;
+    text-decoration: none;
+    line-height: 1.8;
+}
+
+.footer-link:hover {
+    color: #1a7cd4;
+    text-decoration: underline;
+}
+
+/* ── Bottom bar ── */
+.footer-bottom {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 0;
+}
+
+.footer-legal {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    text-decoration: none;
+}
+
+.footer-legal:hover {
+    color: #1a7cd4;
+}
+
+.footer-legal-divider {
+    color: #888;
+    font-size: 13px;
+}
