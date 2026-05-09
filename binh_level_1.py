@@ -1,13 +1,32 @@
 import os
+import pyhtml
 
 def get_page_html(form_data):
     print("About to return page home page...")
 
-    # TODO: Replace with DB queries from immunisation.db
-    stat1_countries = ""
-    stat2_coverage = ""
-    stat3_high_coverage = ""
-    stat4_doses = ""
+    db = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'immunisation.db')
+
+    stat1_countries = pyhtml.get_results_from_query(db,
+        "SELECT COUNT(DISTINCT country) FROM Vaccination"
+    )[0][0]
+
+    stat2_coverage = str(pyhtml.get_results_from_query(db,
+        "SELECT ROUND(AVG(coverage), 1) FROM Vaccination WHERE coverage IS NOT NULL"
+    )[0][0]) + "%"
+
+    stat3_high_coverage = pyhtml.get_results_from_query(db,
+        """SELECT COUNT(*) FROM (
+               SELECT country FROM Vaccination
+               WHERE year = 2024 AND coverage IS NOT NULL
+               GROUP BY country
+               HAVING MIN(coverage) >= 90
+           )"""
+    )[0][0]
+
+    raw_doses = pyhtml.get_results_from_query(db,
+        "SELECT SUM(doses) FROM Vaccination WHERE doses IS NOT NULL"
+    )[0][0]
+    stat4_doses = f"{raw_doses / 1_000_000_000:.1f}B"
 
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
@@ -97,10 +116,11 @@ def get_page_html(form_data):
                         <img src="/images/icon_for_information.png" alt="info" class="btn-icon">
                     </button>
                     <div class="methodology-popup" id="methodologyPopup">
-                        <p><strong>Total Countries Monitored:</strong> Represents the total number of distinct nations and territories reporting data within the selected timeframe and regions.</p>
-                        <p><strong>Average Coverage:</strong> Calculated as the mean vaccination coverage rate across all antigens currently selected in the dataset.</p>
-                        <p><strong>High Coverage Target:</strong> Indicates the count of countries that have successfully achieved a minimum of 90% coverage simultaneously for every selected antigen.</p>
-                        <p><strong>Cumulative Doses:</strong> The aggregate sum of all vaccine doses administered and officially recorded for the specified antigens throughout the entire tracked period.</p>
+                        <p><strong>Data Source:</strong> Metrics are aggregated from the WHO Global Immunization Data (2000&ndash;2024).</p>
+                        <p><strong>Countries Monitored:</strong> Includes nations and territories categorized into 7 global regions, tracked between 2000 and 2024.</p>
+                        <p><strong>Average Coverage:</strong> Calculated as the simple average coverage rate across all tracked antigens globally.</p>
+                        <p><strong>&ge;90% Coverage Target:</strong> Represents the number of nations that successfully achieved at least 90% coverage across all assessed antigens specifically in the year 2024.</p>
+                        <p><strong>Total Doses:</strong> The cumulative total of vaccine doses administered and recorded for the monitored antigens over the 25-year period.</p>
                     </div>
                 </div>
             </div>
@@ -113,7 +133,6 @@ def get_page_html(form_data):
                         <div class="card-number">{stat1_countries}</div>
                         <div class="card-label">Countries</div>
                         <div class="card-desc">Across 7 global regions tracked (2000–2024)</div>
-                        <a href="#" class="card-link">View details &rarr;</a>
                     </div>
                 </div>
 
@@ -121,8 +140,8 @@ def get_page_html(form_data):
                     <img src="/images/2nd card.png" alt="Average Coverage" class="card-icon">
                     <div class="card-info">
                         <div class="card-number">{stat2_coverage}</div>
-                        <div class="card-label">Average<br>Coverage</div>
-                        <a href="#" class="card-link">View details &rarr;</a>
+                        <div class="card-label">Average Coverage</div>
+                        <div class="card-desc">Across 5 antigens and 217 countries (2000–2024)</div>
                     </div>
                 </div>
 
@@ -132,7 +151,6 @@ def get_page_html(form_data):
                         <div class="card-number">{stat3_high_coverage}</div>
                         <div class="card-label">Countries</div>
                         <div class="card-desc">Achieved &ge;90% coverage across ALL antigens in 2024</div>
-                        <a href="#" class="card-link">View details &rarr;</a>
                     </div>
                 </div>
 
@@ -142,7 +160,6 @@ def get_page_html(form_data):
                         <div class="card-number">{stat4_doses}</div>
                         <div class="card-label">Doses</div>
                         <div class="card-desc">Recorded across 5 antigens over 25 years</div>
-                        <a href="#" class="card-link">View details &rarr;</a>
                     </div>
                 </div>
 
