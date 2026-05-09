@@ -1,5 +1,37 @@
 import os
+import re
 import pyhtml
+import navigation
+
+DISEASE_PALETTE = [
+    "#1a7cd4", "#27ae60", "#8e44ad",
+    "#e67e22", "#e74c3c", "#16a085",
+    "#2980b9", "#d35400",
+]
+
+def _antigen_abbr(antigen_id):
+    letters = re.sub(r'\d', '', antigen_id)
+    return letters[:3].upper()
+
+def _antigen_dose(antigen_id):
+    m = re.search(r'(\d+)$', antigen_id)
+    if not m:
+        return ""
+    n = int(m.group(1))
+    suffix = {1: "1st", 2: "2nd", 3: "3rd"}.get(n, f"{n}th")
+    return f"{suffix} dose"
+
+def _antigen_display_name(full_name):
+    name = full_name.split(",")[0]
+    name = re.sub(r'-containing vaccine', '', name, flags=re.IGNORECASE).strip()
+    return name
+
+_color_assigned = {}
+def _antigen_color(antigen_id):
+    prefix = re.sub(r'\d', '', antigen_id)
+    if prefix not in _color_assigned:
+        _color_assigned[prefix] = DISEASE_PALETTE[len(_color_assigned) % len(DISEASE_PALETTE)]
+    return _color_assigned[prefix]
 
 def get_page_html(form_data):
     print("About to return page home page...")
@@ -28,9 +60,27 @@ def get_page_html(form_data):
     )[0][0]
     stat4_doses = f"{raw_doses / 1_000_000_000:.1f}B"
 
+    antigens = pyhtml.get_results_from_query(db, "SELECT AntigenID, name FROM Antigen ORDER BY AntigenID")
+
+    _color_assigned.clear()
+    disease_cards_html = ""
+    for antigen_id, full_name in antigens:
+        abbr         = _antigen_abbr(antigen_id)
+        dose         = _antigen_dose(antigen_id)
+        display_name = _antigen_display_name(full_name)
+        color        = _antigen_color(antigen_id)
+        disease_cards_html += f"""
+            <div class="disease-card">
+                <div class="disease-abbr-circle" style="background:{color}">{abbr}</div>
+                <span class="disease-name">{display_name}</span>
+                <span class="disease-dose">{dose}</span>
+            </div>"""
+
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
         css = f.read()
+
+    nav_html = navigation.get_nav_html("/")
 
     page_html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -42,54 +92,7 @@ def get_page_html(form_data):
 </head>
 <body>
 
-    <!-- Top language bar -->
-    <div class="top-bar">
-        <a href="#">English</a>
-        <span class="divider">|</span>
-        <a href="#">Vietnamese</a>
-    </div>
-
-    <!-- Main header -->
-    <header class="main-header">
-
-        <!-- Logo: far left -->
-        <a href="/" class="logo">
-            <img src="/images/Logo.jpeg" alt="ImmuniData" height="110">
-        </a>
-
-        <!-- Nav + Search grouped to the right -->
-        <div class="nav-search-group">
-
-            <nav class="main-nav">
-                <a href="/" class="nav-link active">Home</a>
-                <a href="#" class="nav-link">About</a>
-
-                <!-- Data dropdown -->
-                <div class="nav-dropdown-wrapper">
-                    <span class="nav-dropdown-toggle">Data &#9660;</span>
-                    <div class="dropdown-menu">
-                        <a href="/binh_page_2">Vaccination Data Explorer</a>
-                        <a href="/binh_page_3">Vaccination Improvement Explorer</a>
-                        <a href="/bao_page_2">Infection Data by Economic Status Explorer</a>
-                        <a href="/bao_page_3">Infection Improvement by Economic Status Explorer</a>
-                    </div>
-                </div>
-
-                <a href="#" class="nav-link">Resources</a>
-                <a href="#" class="nav-link">Help</a>
-            </nav>
-
-            <!-- Search bar -->
-            <div class="search-bar">
-                <input type="text" class="search-input" placeholder="Search...">
-                <button type="button" class="search-btn">
-                    <img src="/images/search_icon_landing_page.png" alt="Search" height="22" width="22">
-                </button>
-            </div>
-
-        </div>
-
-    </header>
+    {nav_html}
 
     <!-- Hero section -->
     <section class="hero">
@@ -111,11 +114,12 @@ def get_page_html(form_data):
             <div class="snapshot-header">
                 <h2 class="snapshot-title">Global Immunization Snapshot (2000 - 2025)</h2>
                 <div class="methodology-wrapper">
-                    <button class="methodology-btn" onclick="toggleMethodology(this)">
+                    <input type="checkbox" id="methodology-toggle" class="methodology-checkbox">
+                    <label for="methodology-toggle" class="methodology-btn">
                         View methodology
                         <img src="/images/icon_for_information.png" alt="info" class="btn-icon">
-                    </button>
-                    <div class="methodology-popup" id="methodologyPopup">
+                    </label>
+                    <div class="methodology-popup">
                         <p><strong>Data Source:</strong> Metrics are aggregated from the WHO Global Immunization Data (2000&ndash;2024).</p>
                         <p><strong>Countries Monitored:</strong> Includes nations and territories categorized into 7 global regions, tracked between 2000 and 2024.</p>
                         <p><strong>Average Coverage:</strong> Calculated as the simple average coverage rate across all tracked antigens globally.</p>
@@ -171,30 +175,7 @@ def get_page_html(form_data):
     <section class="disease-section">
         <h2 class="disease-title">Disease Covered</h2>
         <div class="disease-grid">
-            <div class="disease-card">
-                <img src="/images/Measles disease icon.png" alt="Measles" class="disease-icon">
-                <span class="disease-name">Measles</span>
-            </div>
-            <div class="disease-card">
-                <img src="/images/Polio disease icon.png" alt="Polio" class="disease-icon">
-                <span class="disease-name">Polio</span>
-            </div>
-            <div class="disease-card">
-                <img src="/images/Diptheria disease icon.png" alt="Diphtheria" class="disease-icon">
-                <span class="disease-name">Diptheria</span>
-            </div>
-            <div class="disease-card">
-                <img src="/images/Pertussis disease icon.png" alt="Pertussis" class="disease-icon">
-                <span class="disease-name">Pertussis</span>
-            </div>
-            <div class="disease-card">
-                <img src="/images/Tentanus disease icon.png" alt="Tetanus" class="disease-icon">
-                <span class="disease-name">Tetanus</span>
-            </div>
-            <div class="disease-card">
-                <img src="/images/More disease icon.png" alt="More disease" class="disease-icon">
-                <span class="disease-name">More disease</span>
-            </div>
+            {disease_cards_html}
         </div>
     </section>
 
@@ -261,18 +242,6 @@ def get_page_html(form_data):
         </div>
     </footer>
 
-    <script>
-    function toggleMethodology(btn) {{
-        var popup = document.getElementById('methodologyPopup');
-        popup.classList.toggle('active');
-    }}
-    document.addEventListener('click', function(e) {{
-        var wrapper = document.querySelector('.methodology-wrapper');
-        if (!wrapper.contains(e.target)) {{
-            document.getElementById('methodologyPopup').classList.remove('active');
-        }}
-    }});
-    </script>
 
 </body>
 </html>"""
