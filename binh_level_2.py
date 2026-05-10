@@ -1,15 +1,14 @@
 import os
 import pyhtml
-import navigation
-import footer
+import nav
 
 def get_page_html(form_data):
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
         css = f.read()
 
-    nav_html    = navigation.get_nav_html("/binh_page_2")
-    footer_html = footer.get_footer_html()
+    nav_html    = nav.get_nav_html("/binh_page_2")
+    footer_html = nav.get_footer_html()
 
     return f"""<!DOCTYPE html>
 <html lang="en">

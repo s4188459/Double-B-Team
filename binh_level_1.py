@@ -1,8 +1,7 @@
 import os
 import re
 import pyhtml
-import navigation
-import footer
+import nav
 
 DISEASE_PALETTE = [
     "#1a7cd4", "#27ae60", "#8e44ad",
@@ -81,8 +80,7 @@ def get_page_html(form_data):
     with open(css_file, 'r', encoding='utf-8') as f:
         css = f.read()
 
-    nav_html    = navigation.get_nav_html("/")
-    footer_html = footer.get_footer_html()
+    nav_html = nav.get_nav_html("/")
 
     page_html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -181,7 +179,7 @@ def get_page_html(form_data):
         </div>
     </section>
 
-    {footer_html}
+    {nav.get_footer_html()}
 
 
 </body>
