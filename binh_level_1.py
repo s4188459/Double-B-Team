@@ -99,7 +99,7 @@ def get_page_html(form_data):
         <div class="hero-overlay"></div>
         <div class="hero-content">
             <h1 class="hero-title">Connecting the world<br>through reliable<br>vaccination data.</h1>
-            <p class="hero-desc">Discover insights on immunization coverage, disease<br>incidents and trends across countries, regions and<br>over time. Data from the World Health Organization<br>(2000 - 2025)</p>
+            <p class="hero-desc">Discover insights on immunization coverage, disease<br>incidents and trends across countries, regions and<br>over time. Data from the World Health Organization<br>(2000 - 2024)</p>
             <div class="hero-buttons">
                 <a href="/binh_page_2" class="btn-primary">Explore the Data &rarr;</a>
                 <a href="/bao_page_1" class="btn-outline">Learn More <img src="/images/icon_for_information.png" alt="info" class="btn-icon"></a>
@@ -112,7 +112,7 @@ def get_page_html(form_data):
         <div class="snapshot-container">
 
             <div class="snapshot-header">
-                <h2 class="snapshot-title">Global Immunization Snapshot (2000 - 2025)</h2>
+                <h2 class="snapshot-title">Global Immunization Snapshot (2000 - 2024)</h2>
                 <div class="methodology-wrapper">
                     <input type="checkbox" id="methodology-toggle" class="methodology-checkbox">
                     <label for="methodology-toggle" class="methodology-btn">

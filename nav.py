@@ -6,6 +6,31 @@ DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'immun
 
 _DATA_PAGES = {"/binh_page_2", "/binh_page_3", "/bao_page_2", "/bao_page_3"}
 
+_BREADCRUMBS = {
+    "/bao_page_1":  [("Home", "/"),              ("About", None)],
+    "/binh_page_2": [("Home", "/"), ("Data", None), ("Vaccination Data Explorer", None)],
+    "/binh_page_3": [("Home", "/"), ("Data", None), ("Vaccination Improvement Explorer", None)],
+    "/bao_page_2":  [("Home", "/"), ("Data", None), ("Infection Data by Economic Status Explorer", None)],
+    "/bao_page_3":  [("Home", "/"), ("Data", None), ("Infection Improvement by Economic Status Explorer", None)],
+}
+
+def _build_breadcrumb(active_page):
+    crumbs = _BREADCRUMBS.get(active_page)
+    if not crumbs:
+        return ""
+    parts = []
+    for i, (label, href) in enumerate(crumbs):
+        is_last = (i == len(crumbs) - 1)
+        if is_last:
+            parts.append(f'<span class="breadcrumb-current">{label}</span>')
+        elif href:
+            parts.append(f'<a href="{href}" class="breadcrumb-link">{label}</a>')
+        else:
+            parts.append(f'<span class="breadcrumb-link">{label}</span>')
+        if not is_last:
+            parts.append('<span class="breadcrumb-sep">&rsaquo;</span>')
+    return f'<nav class="breadcrumb">{"".join(parts)}</nav>'
+
 _PAGE_MAP = {
     "Vaccination Data Explorer":                         "/binh_page_2",
     "Vaccination Improvement Explorer":                  "/binh_page_3",
@@ -53,8 +78,13 @@ def get_nav_html(active_page="/"):
         datalist_opts.append(f'<option value="{e} in Infection Improvement by Economic Status Explorer">')
     datalist_html = '\n'.join(datalist_opts)
 
-    home_class = "nav-link active" if active_page == "/" else "nav-link"
-    data_class = "nav-dropdown-toggle active" if active_page in _DATA_PAGES else "nav-dropdown-toggle"
+    home_class  = "nav-link active" if active_page == "/" else "nav-link"
+    about_class = "nav-link active" if active_page == "/bao_page_1" else "nav-link"
+    data_class  = "nav-dropdown-toggle active" if active_page in _DATA_PAGES else "nav-dropdown-toggle"
+
+    def _dd(href, label):
+        cls = ' class="active"' if active_page == href else ''
+        return f'<a href="{href}"{cls}>{label}</a>'
 
     return f"""
     <!-- Top language bar -->
@@ -77,16 +107,16 @@ def get_nav_html(active_page="/"):
 
             <nav class="main-nav">
                 <a href="/" class="{home_class}">Home</a>
-                <a href="#" class="nav-link">About</a>
+                <a href="/bao_page_1" class="{about_class}">About</a>
 
                 <!-- Data dropdown -->
                 <div class="nav-dropdown-wrapper">
                     <span class="{data_class}">Data &#9660;</span>
                     <div class="dropdown-menu">
-                        <a href="/binh_page_2">Vaccination Data Explorer</a>
-                        <a href="/binh_page_3">Vaccination Improvement Explorer</a>
-                        <a href="/bao_page_2">Infection Data by Economic Status Explorer</a>
-                        <a href="/bao_page_3">Infection Improvement by Economic Status Explorer</a>
+                        {_dd("/binh_page_2", "Vaccination Data Explorer")}
+                        {_dd("/binh_page_3", "Vaccination Improvement Explorer")}
+                        {_dd("/bao_page_2", "Infection Data by Economic Status Explorer")}
+                        {_dd("/bao_page_3", "Infection Improvement by Economic Status Explorer")}
                     </div>
                 </div>
 
@@ -107,7 +137,8 @@ def get_nav_html(active_page="/"):
 
         </div>
 
-    </header>"""
+    </header>
+    {_build_breadcrumb(active_page)}"""
 
 # ── footer ────────────────────────────────────────────────────────────────────
 

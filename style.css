@@ -8,6 +8,15 @@
     font-family: Arial, sans-serif;
 }
 
+html {
+    overflow-x: hidden;
+}
+
+body {
+    max-width: 100%;
+    overflow-x: clip;
+}
+
 a {
     text-decoration: none;
     color: inherit;
@@ -127,6 +136,13 @@ a {
     color: #1a7cd4;
 }
 
+.nav-dropdown-toggle.active {
+    color: #1a7cd4;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 6px;
+}
+
 /* Invisible bridge: fills the gap between toggle and menu so hover stays active */
 .nav-dropdown-wrapper::after {
     content: '';
@@ -209,6 +225,17 @@ a {
     opacity: 1;
 }
 
+.dropdown-menu a.active {
+    background-color: #f0f6ff;
+    color: #1a7cd4;
+    border-left: 3px solid #1a7cd4;
+    font-weight: 700;
+}
+
+.dropdown-menu a.active::before {
+    opacity: 1;
+}
+
 /* ── Search bar ── */
 .search-bar {
     display: flex;
@@ -250,6 +277,40 @@ a {
     display: block;
     height: 24px;
     width: auto;
+}
+
+/* ══════════════════════════════
+   BREADCRUMB
+══════════════════════════════ */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 65px;
+    background: #ffffff;
+    border-bottom: 1px solid #e8e8e8;
+    font-size: 14px;
+}
+
+.breadcrumb-link {
+    color: #555;
+    text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+    color: #1a7cd4;
+    text-decoration: underline;
+}
+
+.breadcrumb-sep {
+    color: #aaa;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.breadcrumb-current {
+    color: #1a7cd4;
+    font-weight: 600;
 }
 
 /* ══════════════════════════════
