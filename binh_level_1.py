@@ -1,33 +1,25 @@
 import os
 import re
-#re is to process string 
 import pyhtml
-import nav
+import navigation
+import footer
 
-# ====================== COLOR PALETTE ======================
-# List of 8 colors used to assign different colors to each vaccine group
 DISEASE_PALETTE = [
     "#1a7cd4", "#27ae60", "#8e44ad",
     "#e67e22", "#e74c3c", "#16a085",
     "#2980b9", "#d35400",
 ]
-# ====================== HELPER FUNCTIONS ======================
-# These functions are used internally to format vaccine names and assign colors
+
 def _antigen_abbr(antigen_id):
-    # Remove all digits from the ID
     letters = re.sub(r'\d', '', antigen_id)
-    # Take first 3 letters and convert to uppercase
     return letters[:3].upper()
 
 def _antigen_dose(antigen_id):
-    # Search for number at the end of the string
     m = re.search(r'(\d+)$', antigen_id)
     if not m:
         return ""
-    # m.group(1) extracts the number inside the first () of the regex
     n = int(m.group(1))
-    suffix = {1: "1st", 2: "2nd", 3: "3rd"}.get(n, f"{n}th") 
-    #set default is n{th}
+    suffix = {1: "1st", 2: "2nd", 3: "3rd"}.get(n, f"{n}th")
     return f"{suffix} dose"
 
 def _antigen_display_name(full_name):
@@ -52,23 +44,13 @@ def get_page_html(form_data):
     )[0][0]
 
     stat2_coverage = str(pyhtml.get_results_from_query(db,
-        """SELECT ROUND(AVG(coverage), 1) 
-        FROM Vaccination 
-        WHERE coverage IS NOT NULL"""
+        "SELECT ROUND(AVG(coverage), 1) FROM Vaccination WHERE coverage IS NOT NULL"
     )[0][0]) + "%"
-    # Example
-    #[(85.3,)] 
-    #    ↓
-    #[0][0] → 85.3
-    #    ↓
-    #str() → "85.3"
-    #    ↓
-    #+ "%" → "85.3%"
 
     stat3_high_coverage = pyhtml.get_results_from_query(db,
         """SELECT COUNT(*) FROM (
                SELECT country FROM Vaccination
-               WHERE year = max(year) AND coverage IS NOT NULL
+               WHERE year = 2024 AND coverage IS NOT NULL
                GROUP BY country
                HAVING MIN(coverage) >= 90
            )"""
@@ -99,8 +81,8 @@ def get_page_html(form_data):
     with open(css_file, 'r', encoding='utf-8') as f:
         css = f.read()
 
-    nav_html    = nav.get_nav_html("/")
-    footer_html = nav.get_footer_html()
+    nav_html    = navigation.get_nav_html("/")
+    footer_html = footer.get_footer_html()
 
     page_html = f"""<!DOCTYPE html>
 <html lang="en">
