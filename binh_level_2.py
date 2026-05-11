@@ -354,13 +354,6 @@ def get_page_html(form_data):
             </div>
         </div>
     </form>
-    <script>
-    (function(){{
-        var r=document.getElementById('sel-region'),c=document.getElementById('sel-country');
-        r.onchange=function(){{c.value='';r.form.submit();}};
-        c.onchange=function(){{c.form.submit();}};
-    }})();
-    </script>
 </div>
 
 <div class="results-bar">
