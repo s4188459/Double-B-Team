@@ -102,7 +102,7 @@ def get_page_html(form_data):
             <p class="hero-desc">Discover insights on immunization coverage, disease<br>incidents and trends across countries, regions and<br>over time. Data from the World Health Organization<br>(2000 - 2024)</p>
             <div class="hero-buttons">
                 <a href="/binh_page_2" class="btn-primary">Explore the Data &rarr;</a>
-                <a href="/bao_page_1" class="btn-outline">Learn More <img src="/images/icon_for_information.png" alt="info" class="btn-icon"></a>
+                <a href="/bao_page_1" class="btn-outline">Learn More <img src="images\iconinfo.png" alt="info" class="btn-icon"></a>
             </div>
         </div>
     </section>
