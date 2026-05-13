@@ -58,7 +58,8 @@ def get_page_html(form_data):
 
     # ── WHERE conditions (applied to both tables) ──
     def base_conds():
-        c = ["v.coverage IS NOT NULL"]
+        # typeof = 'real' excludes the 5415 rows where coverage = '' (TEXT, not NULL)
+        c = ["TYPEOF(v.coverage) = 'real'"]
         if antigen_f: c.append(f"v.antigen = '{_esc(antigen_f)}'")
         if year_f and year_f.isdigit(): c.append(f"v.year = {int(year_f)}")
         if region_f:  c.append(f"c.region  = '{_esc(region_f)}'")
