@@ -51,7 +51,11 @@ def get_page_html(form_data):
     try: end_y = int(end_year_f)
     except: end_y = 2024
     if end_y < start_y:
-        start_y, end_y = end_y, start_y  # swap silently
+        start_y, end_y = end_y, start_y  # swap silently (safety net for URL tampering)
+
+    # Cascade: each dropdown only shows valid choices relative to the other
+    start_year_opts = [(yr,) for (yr,) in year_opts if int(yr) <= end_y]   # Start ≤ End
+    end_year_opts   = [(yr,) for (yr,) in year_opts if int(yr) >= start_y] # End ≥ Start
 
     # Top N
     TOP_OPTS = [("5","Top 5"), ("10","Top 10"), ("20","Top 20"), ("50","Top 50"), ("100","Top 100")]
@@ -156,6 +160,19 @@ def get_page_html(form_data):
         qs = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in p.items() if v)
         return f"/binh_page_3?{qs}#results-section" if qs else "/binh_page_3#results-section"
 
+    # ── Cascade year URL builder — for <details> Start/End Year nav links ──
+    # Clicking an option navigates instantly, preserving all other params. No JS.
+    def cascade_year_url(start_year, end_year):
+        p = {}
+        if antigen_f:                       p["antigen"]    = antigen_f
+        p["start_year"]                                     = str(start_year)
+        p["end_year"]                                       = str(end_year)
+        if top_f != "10":                   p["top"]        = top_f
+        if sort_f != "increase_desc":       p["sort"]       = sort_f
+        p["page"] = "1"
+        qs = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in p.items() if v)
+        return f"/binh_page_3?{qs}#results-section" if qs else "/binh_page_3#results-section"
+
     # ── Filter tags ──
     filter_tags = ""
     if antigen_f:
@@ -173,18 +190,24 @@ def get_page_html(form_data):
         return f'<select name="antigen" class="filter-select">{o}</select>'
 
     def sel_start_year():
-        o = ""
-        for (yr,) in year_opts:
-            s = "selected" if int(yr) == start_y else ""
-            o += f'<option value="{yr}" {s}>{yr}</option>'
-        return f'<select name="start_year" class="filter-select">{o}</select>'
+        opts = ""
+        for (yr,) in start_year_opts:
+            sc = "selected" if int(yr) == start_y else ""
+            opts += f'<a href="{cascade_year_url(yr, end_y)}" class="{sc}">{yr}</a>'
+        return (f'<details class="custom-select">'
+                f'<summary>{start_y}</summary>'
+                f'<div class="custom-select-options">{opts}</div>'
+                f'</details>')
 
     def sel_end_year():
-        o = ""
-        for (yr,) in year_opts:
-            s = "selected" if int(yr) == end_y else ""
-            o += f'<option value="{yr}" {s}>{yr}</option>'
-        return f'<select name="end_year" class="filter-select">{o}</select>'
+        opts = ""
+        for (yr,) in end_year_opts:
+            sc = "selected" if int(yr) == end_y else ""
+            opts += f'<a href="{cascade_year_url(start_y, yr)}" class="{sc}">{yr}</a>'
+        return (f'<details class="custom-select">'
+                f'<summary>{end_y}</summary>'
+                f'<div class="custom-select-options">{opts}</div>'
+                f'</details>')
 
     def sel_top():
         o = ""
@@ -316,11 +339,17 @@ def get_page_html(form_data):
 </div>
 
 <div class="filter-card">
-    <form method="GET" action="/binh_page_3">
-        <div class="filter-row">
+    <div class="filter-row">
+
+        <!-- Start Year & End Year: <details>/<a> links — pure HTML/CSS cascade, no JavaScript -->
+        <div class="filter-group"><label>Start Year</label>{sel_start_year()}</div>
+        <div class="filter-group"><label>End Year</label>{sel_end_year()}</div>
+
+        <!-- Apply Filters form: pass current year selection as hidden fields -->
+        <form method="GET" action="/binh_page_3" style="display:contents">
+            <input type="hidden" name="start_year" value="{start_y}">
+            <input type="hidden" name="end_year"   value="{end_y}">
             <div class="filter-group"><label>Antigen</label>{sel_antigen()}</div>
-            <div class="filter-group"><label>Start Year</label>{sel_start_year()}</div>
-            <div class="filter-group"><label>End Year</label>{sel_end_year()}</div>
             <div class="filter-group"><label>Top</label>{sel_top()}</div>
             <div class="filter-group"><label>Sort by</label>{sel_sort()}</div>
             <div class="filter-actions">
@@ -331,8 +360,9 @@ def get_page_html(form_data):
                     <img src="/images/reset%20icon.png" alt=""> Reset
                 </a>
             </div>
-        </div>
-    </form>
+        </form>
+
+    </div>
 </div>
 
 <div class="results-bar" id="results-section">
