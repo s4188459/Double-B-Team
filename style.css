@@ -770,6 +770,62 @@ a {
     cursor: pointer;
 }
 .filter-select:focus { border-color: #1a7cd4; outline: none; }
+
+/* Custom <details>/<summary> dropdown — mirrors .filter-select exactly */
+.custom-select { position: relative; display: block; }
+.custom-select summary {
+    display: block;
+    border: 1.5px solid #d0d4da;
+    border-radius: 8px;
+    padding: 8px 28px 8px 10px;
+    font-size: 13px;
+    color: #333;
+    background: #fff url("/images/dropdown%20icon.png") no-repeat right 10px center;
+    background-size: 16px auto;
+    cursor: pointer;
+    list-style: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+}
+.custom-select summary::-webkit-details-marker { display: none; }
+.custom-select summary::marker { content: none; }
+.custom-select[open] summary {
+    border-color: #1a7cd4;
+}
+.custom-select-options {
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    z-index: 200;
+    background: #fff;
+    border: 0.5px solid #333;
+    border-radius: 4px;
+    margin-top: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+}
+.custom-select-options a {
+    display: block;
+    padding: 4px 8px;
+    font-size: 13px;
+    color: #333;
+    text-decoration: none;
+}
+.custom-select-options a:hover { background: #f0f6ff; }
+.custom-select-options a.selected { background: #777; color: #fff; } /* ← màu selected option */
+.custom-select-locked {
+    display: block;
+    border: 1.5px solid #d0d4da;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: #555;
+    background: #f0f0f0;
+    cursor: not-allowed;
+}
+
 .filter-actions { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .btn-apply {
     background: #1a7cd4; color: #fff;
@@ -953,6 +1009,33 @@ a {
 .chart-placeholder {
     padding: 64px 20px; text-align: center; color: #bbb; font-size: 14px;
 }
+
+/* ── Single full-width table (level 3) ── */
+.single-table-wrap {
+    margin: 0 65px;
+}
+.single-table-wrap .table-card { flex: none; }
+
+/* ── CSS Tabs for t3 ── */
+.t3-table-panel, .t3-chart-panel { display: none; }
+#t3-table:checked ~ .t3-table-panel { display: block; }
+#t3-chart:checked  ~ .t3-chart-panel { display: block; }
+#t3-table:checked ~ .tab-bar .t3-table-label,
+#t3-chart:checked  ~ .tab-bar .t3-chart-label {
+    background: #fff; color: #111;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.13);
+}
+#t3-table:checked ~ .tab-bar .t3-table-label img,
+#t3-chart:checked  ~ .tab-bar .t3-chart-label img { opacity: 1; }
+
+/* ── Delta badge (increase / decrease) ── */
+.delta-badge {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 12px; font-size: 12px; font-weight: 700;
+}
+.delta-pos  { background: #e6faf0; color: #1a7a4a; }
+.delta-neg  { background: #fee2e2; color: #b91c1c; }
+.delta-zero { background: #f3f4f6; color: #666; }
 
 /* ── Info note ── */
 .info-note {
