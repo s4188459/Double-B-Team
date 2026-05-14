@@ -6,12 +6,15 @@ import nav
 
 ROWS_PER_PAGE = 10
 
+
 def _esc(s):
     return str(s).replace("'", "''")
+
 
 def _antigen_name(full_name):
     n = full_name.split(",")[0]
     return re.sub(r'-containing vaccine', '', n, flags=re.IGNORECASE).strip()
+
 
 def _cov_class(v):
     if v is None: return "cov-mid"
@@ -23,10 +26,18 @@ def get_page_html(form_data):
         v = form_data.get(key)
         return (v[0] if v else default).strip()
 
-    antigen_f = _get("antigen")
-    year_f    = _get("year")
+    # ── UI state params: control dropdown display & cascade logic only ──
     region_f  = _get("region")
     country_f = _get("country")
+
+    # ── Applied params: control what the tables actually query ──
+    # These only change when the user clicks "Apply Filters"
+    applied_region_f  = _get("applied_region")
+    applied_country_f = _get("applied_country")
+
+    # ── Filter params: applied immediately (in the Apply Filters form) ──
+    antigen_f = _get("antigen")
+    year_f    = _get("year")
     sort_f    = _get("sort",  "coverage_desc")
     sort2_f   = _get("sort2", "countries_desc")
 
@@ -41,14 +52,14 @@ def get_page_html(form_data):
     year_opts    = pyhtml.get_results_from_query(db, "SELECT DISTINCT year FROM Vaccination ORDER BY year DESC")
     region_opts  = pyhtml.get_results_from_query(db, "SELECT RegionID, region FROM Region ORDER BY region")
 
-    # Auto-derive region from country so filtering is always consistent
+    # ── Cascade: auto-derive region from selected country ──
     if country_f:
         _r = pyhtml.get_results_from_query(db,
             f"SELECT region FROM Country WHERE CountryID = '{_esc(country_f)}'")
         if _r:
             region_f = str(_r[0][0])
 
-    # Country list limited to the selected region (if any)
+    # ── Cascade: limit country list to selected region ──
     if region_f:
         country_opts = pyhtml.get_results_from_query(db,
             f"SELECT CountryID, name FROM Country WHERE region = '{_esc(region_f)}' ORDER BY name")
@@ -56,19 +67,18 @@ def get_page_html(form_data):
         country_opts = pyhtml.get_results_from_query(db,
             "SELECT CountryID, name FROM Country ORDER BY name")
 
-    # ── WHERE conditions (applied to both tables) ──
+    # ── WHERE conditions for tables — use applied_* NOT region_f/country_f ──
     def base_conds():
-        # typeof = 'real' excludes the 5415 rows where coverage = '' (TEXT, not NULL)
+        # TYPEOF = 'real' excludes rows where coverage stored as empty string TEXT
         c = ["TYPEOF(v.coverage) = 'real'"]
-        if antigen_f: c.append(f"v.antigen = '{_esc(antigen_f)}'")
-        if year_f and year_f.isdigit(): c.append(f"v.year = {int(year_f)}")
-        if region_f:  c.append(f"c.region  = '{_esc(region_f)}'")
-        if country_f: c.append(f"v.country = '{_esc(country_f)}'")
+        if antigen_f:                  c.append(f"v.antigen = '{_esc(antigen_f)}'")
+        if year_f and year_f.isdigit():c.append(f"v.year = {int(year_f)}")
+        if applied_region_f:           c.append(f"c.region  = '{_esc(applied_region_f)}'")
+        if applied_country_f:          c.append(f"v.country = '{_esc(applied_country_f)}'")
         return " AND ".join(c)
 
     where_base = "WHERE " + base_conds()
 
-    # Shared JOIN used in inner queries
     JOINS = """FROM Vaccination v
         JOIN Country c ON v.country = c.CountryID
         JOIN Region  r ON c.region  = r.RegionID
@@ -98,7 +108,8 @@ def get_page_html(form_data):
         "region_asc":    "Region (A→Z)",
         "region_desc":   "Region (Z→A)",
     }
-    order_by  = SORT_MAP.get(sort_f,  "ROUND(AVG(v.coverage),1) DESC")
+    order_by = SORT_MAP.get(sort_f, "ROUND(AVG(v.coverage),1) DESC")
+
     SORT2_MAP = {
         "countries_desc": "countries_met DESC",
         "countries_asc":  "countries_met ASC",
@@ -111,12 +122,12 @@ def get_page_html(form_data):
     }
     order_by2 = SORT2_MAP.get(sort2_f, "countries_met DESC")
 
-    # ══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════════════════
     # TABLE 1: Countries meeting ≥90% vaccination target
     # Duplicates handled with GROUP BY + AVG(coverage)
-    # ══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════════════════
     t1_inner = f"""
-        SELECT a.AntigenID, v.year, c.name  AS country_name,
+        SELECT a.AntigenID, v.year, c.name AS country_name,
                r.region   AS region_name,
                ROUND(AVG(v.coverage), 1) AS pct
         {JOINS}
@@ -136,9 +147,9 @@ def get_page_html(form_data):
         ORDER BY {order_by}
         LIMIT {ROWS_PER_PAGE} OFFSET {(page1-1)*ROWS_PER_PAGE}""")
 
-    # ══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════════════════
     # TABLE 2: Per region — how many countries met ≥90%
-    # ══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════════════════
     t2_inner = f"""
         SELECT a.AntigenID, sub.year, r.region AS region_name,
                COUNT(*) AS countries_met
@@ -180,13 +191,15 @@ def get_page_html(form_data):
     export1_href = _xls_export(["Antigen", "Year", "Country", "Region", "% of Target"], _exp1)
     export2_href = _xls_export(["Antigen", "Year", "Region", "Countries Met >=90%"], _exp2)
 
-    # ── URL builder (preserves all filters) ──
+    # ── URL builder — preserves all 8 filter params (including applied_*) ──
     def url(**kw):
         p = {}
-        if antigen_f: p["antigen"] = antigen_f
-        if year_f:    p["year"]    = year_f
-        if region_f:  p["region"]  = region_f
-        if country_f: p["country"] = country_f
+        if antigen_f:         p["antigen"]         = antigen_f
+        if year_f:            p["year"]             = year_f
+        if region_f:          p["region"]           = region_f
+        if country_f:         p["country"]          = country_f
+        if applied_region_f:  p["applied_region"]   = applied_region_f
+        if applied_country_f: p["applied_country"]  = applied_country_f
         if sort_f  and sort_f  != "coverage_desc":  p["sort"]  = sort_f
         if sort2_f and sort2_f != "countries_desc": p["sort2"] = sort2_f
         p["page1"] = str(page1)
@@ -195,23 +208,26 @@ def get_page_html(form_data):
         qs = "&".join(f"{k}={v}" for k, v in p.items() if v)
         return f"/binh_page_2?{qs}" if qs else "/binh_page_2"
 
-    # ── Active filter tags ──
+    # ── Filter tags — reflect what's actually in the tables (applied_*) ──
     filter_tags = ""
     if antigen_f:
         nm = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), antigen_f)
         filter_tags += f'<span class="filter-tag">{nm}</span> '
     if year_f:
         filter_tags += f'<span class="filter-tag">{year_f}</span> '
-    if region_f:
-        rn = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), region_f)
+    if applied_region_f:
+        rn = next((rn for rid, rn in region_opts if str(rid) == str(applied_region_f)), applied_region_f)
         filter_tags += f'<span class="filter-tag">{rn}</span> '
-    if country_f:
-        cn = next((cn for cid, cn in country_opts if cid == country_f), country_f)
+    if applied_country_f:
+        _cn_row = pyhtml.get_results_from_query(db,
+            f"SELECT name FROM Country WHERE CountryID = '{_esc(applied_country_f)}'")
+        cn = _cn_row[0][0] if _cn_row else applied_country_f
         filter_tags += f'<span class="filter-tag">{cn}</span> '
     if not filter_tags:
         filter_tags = '<span style="color:#777;font-size:13px">All data</span> '
 
     # ── Dropdown builders ──
+
     def sel_antigen():
         o = '<option value="">All Antigens</option>'
         for aid, an in antigen_opts:
@@ -227,18 +243,24 @@ def get_page_html(form_data):
         return f'<select name="year" class="filter-select">{o}</select>'
 
     def sel_region():
+        # When a country is chosen, region is auto-derived and locked
+        if country_f:
+            rn = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), region_f)
+            return (f'<input type="text" value="{rn}" disabled class="filter-select" '
+                    f'style="background:#f0f0f0;color:#555;cursor:not-allowed">'
+                    f'<input type="hidden" name="region" value="{region_f}">')
         o = '<option value="">All Regions</option>'
         for rid, rn in region_opts:
             s = "selected" if str(rid) == str(region_f) else ""
             o += f'<option value="{rid}" {s}>{rn.replace("&","&amp;")}</option>'
-        return f'<select id="sel-region" name="region" class="filter-select">{o}</select>'
+        return f'<select name="region" class="filter-select" onchange="this.form.submit()">{o}</select>'
 
     def sel_country():
         o = '<option value="">All Countries</option>'
         for cid, cn in country_opts:
             s = "selected" if cid == country_f else ""
             o += f'<option value="{cid}" {s}>{cn}</option>'
-        return f'<select id="sel-country" name="country" class="filter-select">{o}</select>'
+        return f'<select name="country" class="filter-select" onchange="this.form.submit()">{o}</select>'
 
     def sel_sort():
         o = ""
@@ -248,6 +270,7 @@ def get_page_html(form_data):
         return f'<select name="sort" class="filter-select">{o}</select>'
 
     # ── Table row builders ──
+
     def rows1_html():
         if not rows1:
             return '<tr><td colspan="5" class="no-data">No countries found for the selected filters</td></tr>'
@@ -266,6 +289,7 @@ def get_page_html(form_data):
         return out
 
     # ── Pagination ──
+
     def paginate(cur, total, key, total_cnt):
         shown = {1, total, cur}
         if cur > 1:     shown.add(cur - 1)
@@ -300,17 +324,17 @@ def get_page_html(form_data):
     _SIMG = '<img src="/images/order%20icon.png" class="sort-icon-img" alt="">'
 
     def th1(label, asc_key, desc_key):
-        is_asc  = sort_f == asc_key
-        next_k  = desc_key if is_asc else asc_key
-        cls     = " sort-asc" if is_asc else (" sort-desc" if sort_f == desc_key else "")
+        is_asc = sort_f == asc_key
+        next_k = desc_key if is_asc else asc_key
+        cls    = " sort-asc" if is_asc else (" sort-desc" if sort_f == desc_key else "")
         return (f'<th class="sortable{cls}">'
                 f'<a href="{url(sort=next_k, page1="1")}" class="sort-link">'
                 f'{label} {_SIMG}</a></th>')
 
     def th2(label, asc_key, desc_key):
-        is_asc  = sort2_f == asc_key
-        next_k  = desc_key if is_asc else asc_key
-        cls     = " sort-asc" if is_asc else (" sort-desc" if sort2_f == desc_key else "")
+        is_asc = sort2_f == asc_key
+        next_k = desc_key if is_asc else asc_key
+        cls    = " sort-asc" if is_asc else (" sort-desc" if sort2_f == desc_key else "")
         return (f'<th class="sortable{cls}">'
                 f'<a href="{url(sort2=next_k, page2="1")}" class="sort-link">'
                 f'{label} {_SIMG}</a></th>')
@@ -341,20 +365,68 @@ def get_page_html(form_data):
 </div>
 
 <div class="filter-card">
-    <form method="GET" action="/binh_page_2">
-        <input type="hidden" name="sort2" value="{sort2_f}">
-        <div class="filter-row">
-            <div class="filter-group"><label>Antigen</label>{sel_antigen()}</div>
-            <div class="filter-group"><label>Year</label>{sel_year()}</div>
-            <div class="filter-group"><label>Region</label>{sel_region()}</div>
-            <div class="filter-group"><label>Country</label>{sel_country()}</div>
-            <div class="filter-group"><label>Sort by</label>{sel_sort()}</div>
-            <div class="filter-actions">
-                <button type="submit" class="btn-apply"><img src="/images/filter%20icon.png" alt=""> Apply Filters</button>
-                <a href="/binh_page_2" class="btn-reset"><img src="/images/reset%20icon.png" alt=""> Reset</a>
+    <div class="filter-row">
+
+        <!--
+            FORM 1 — Cascade form (Region & Country)
+            Submits automatically on dropdown change via onchange="this.form.submit()".
+            Passes applied_region/applied_country through as hidden fields unchanged
+            so the tables do NOT reload when the dropdown changes.
+        -->
+        <form method="GET" action="/binh_page_2" style="display:contents">
+            <input type="hidden" name="antigen"         value="{antigen_f}">
+            <input type="hidden" name="year"            value="{year_f}">
+            <input type="hidden" name="sort"            value="{sort_f}">
+            <input type="hidden" name="sort2"           value="{sort2_f}">
+            <input type="hidden" name="page1"           value="1">
+            <input type="hidden" name="page2"           value="1">
+            <input type="hidden" name="applied_region"  value="{applied_region_f}">
+            <input type="hidden" name="applied_country" value="{applied_country_f}">
+            <div class="filter-group">
+                <label>Region</label>
+                {sel_region()}
             </div>
-        </div>
-    </form>
+            <div class="filter-group">
+                <label>Country</label>
+                {sel_country()}
+            </div>
+        </form>
+
+        <!--
+            FORM 2 — Apply Filters form (Antigen, Year, Sort + button)
+            Tables only update when this form is submitted.
+            Sets applied_region = region_f and applied_country = country_f
+            so the tables reflect the current dropdown selections.
+        -->
+        <form method="GET" action="/binh_page_2" style="display:contents">
+            <input type="hidden" name="region"          value="{region_f}">
+            <input type="hidden" name="country"         value="{country_f}">
+            <input type="hidden" name="applied_region"  value="{region_f}">
+            <input type="hidden" name="applied_country" value="{country_f}">
+            <input type="hidden" name="sort2"           value="{sort2_f}">
+            <div class="filter-group">
+                <label>Antigen</label>
+                {sel_antigen()}
+            </div>
+            <div class="filter-group">
+                <label>Year</label>
+                {sel_year()}
+            </div>
+            <div class="filter-group">
+                <label>Sort by</label>
+                {sel_sort()}
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn-apply">
+                    <img src="/images/filter%20icon.png" alt=""> Apply Filters
+                </button>
+                <a href="/binh_page_2" class="btn-reset">
+                    <img src="/images/reset%20icon.png" alt=""> Reset
+                </a>
+            </div>
+        </form>
+
+    </div>
 </div>
 
 <div class="results-bar">
@@ -382,16 +454,18 @@ def get_page_html(form_data):
         <div class="t1-table-panel">
             <div class="table-header-row">
                 <span class="table-title">Table 1: Countries Meeting &ge;90% Vaccination Target</span>
-                <a href="{export1_href}" download="vaccination_table1.xls" class="export-btn"><img src="/images/export%20icon.png" alt=""> Export Data</a>
+                <a href="{export1_href}" download="vaccination_table1.xls" class="export-btn">
+                    <img src="/images/export%20icon.png" alt=""> Export Data
+                </a>
             </div>
             <div class="table-wrapper">
                 <table class="data-table">
                     <thead><tr>
-                        {th1("Antigen",           "antigen_asc",  "antigen_desc")}
-                        {th1("Year",              "year_asc",     "year_desc")}
-                        {th1("Country",           "country_asc",  "country_desc")}
-                        {th1("Region",            "region_asc",   "region_desc")}
-                        {th1("% of Target",       "coverage_asc", "coverage_desc")}
+                        {th1("Antigen",      "antigen_asc",  "antigen_desc")}
+                        {th1("Year",         "year_asc",     "year_desc")}
+                        {th1("Country",      "country_asc",  "country_desc")}
+                        {th1("Region",       "region_asc",   "region_desc")}
+                        {th1("% of Target",  "coverage_asc", "coverage_desc")}
                     </tr></thead>
                     <tbody>{rows1_html()}</tbody>
                 </table>
@@ -416,15 +490,17 @@ def get_page_html(form_data):
         <div class="t2-table-panel">
             <div class="table-header-row">
                 <span class="table-title">Table 2: Region Summary</span>
-                <a href="{export2_href}" download="vaccination_table2.xls" class="export-btn"><img src="/images/export%20icon.png" alt=""> Export Data</a>
+                <a href="{export2_href}" download="vaccination_table2.xls" class="export-btn">
+                    <img src="/images/export%20icon.png" alt=""> Export Data
+                </a>
             </div>
             <div class="table-wrapper">
                 <table class="data-table">
                     <thead><tr>
-                        {th2("Antigen",            "antigen2_asc",   "antigen2_desc")}
-                        {th2("Year",               "year2_asc",      "year2_desc")}
+                        {th2("Antigen",            "antigen2_asc",  "antigen2_desc")}
+                        {th2("Year",               "year2_asc",     "year2_desc")}
                         {th2("Countries met ≥90%", "countries_asc", "countries_desc")}
-                        {th2("Region",             "region2_asc",    "region2_desc")}
+                        {th2("Region",             "region2_asc",   "region2_desc")}
                     </tr></thead>
                     <tbody>{rows2_html()}</tbody>
                 </table>
@@ -440,7 +516,7 @@ def get_page_html(form_data):
 
 <div class="info-note">
     <img src="/images/iconinfo.png" class="info-icon-img" alt="">
-    <span>Note: Both tables update automatically when you click &#8220;Apply Filters&#8221;. Use &#8220;Reset&#8221; to clear all selections. Duplicate records are averaged automatically.</span>
+    <span>Note: Tables update only when you click &#8220;Apply Filters&#8221;. Region &amp; Country dropdowns refresh instantly for cascade selection. Use &#8220;Reset&#8221; to clear all selections.</span>
 </div>
 
 {footer_html}
