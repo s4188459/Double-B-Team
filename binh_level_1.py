@@ -117,7 +117,7 @@ def get_page_html(form_data):
                     <input type="checkbox" id="methodology-toggle" class="methodology-checkbox">
                     <label for="methodology-toggle" class="methodology-btn">
                         View methodology
-                        <img src="/images/icon_for_information.png" alt="info" class="btn-icon">
+                        <img src="/images/iconinfo.png" alt="info" class="btn-icon">
                     </label>
                     <div class="methodology-popup">
                         <p><strong>Data Source:</strong> Metrics are aggregated from the WHO Global Immunization Data (2000&ndash;2024).</p>
