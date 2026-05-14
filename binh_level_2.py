@@ -191,6 +191,23 @@ def get_page_html(form_data):
     export1_href = _xls_export(["Antigen", "Year", "Country", "Region", "% of Target"], _exp1)
     export2_href = _xls_export(["Antigen", "Year", "Region", "Countries Met >=90%"], _exp2)
 
+    # ── Cascade URL builder — used by <details> region/country nav links ──
+    # Each <a> in the dropdown navigates to a new URL → instant page reload, no JS.
+    def cascade_url(region="", country=""):
+        p = {}
+        if antigen_f:         p["antigen"]         = antigen_f
+        if year_f:            p["year"]             = year_f
+        if region:            p["region"]           = region
+        if country:           p["country"]          = country
+        if applied_region_f:  p["applied_region"]   = applied_region_f
+        if applied_country_f: p["applied_country"]  = applied_country_f
+        if sort_f  and sort_f  != "coverage_desc":  p["sort"]  = sort_f
+        if sort2_f and sort2_f != "countries_desc": p["sort2"] = sort2_f
+        p["page1"] = "1"
+        p["page2"] = "1"
+        qs = "&".join(f"{k}={v}" for k, v in p.items() if v)
+        return f"/binh_page_2?{qs}" if qs else "/binh_page_2"
+
     # ── URL builder — preserves all 8 filter params (including applied_*) ──
     def url(**kw):
         p = {}
@@ -243,24 +260,31 @@ def get_page_html(form_data):
         return f'<select name="year" class="filter-select">{o}</select>'
 
     def sel_region():
-        # When a country is chosen, region is auto-derived and locked
+        # When a country is selected, region is auto-derived and locked (no interaction)
         if country_f:
-            rn = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), region_f)
-            return (f'<input type="text" value="{rn}" disabled class="filter-select" '
-                    f'style="background:#f0f0f0;color:#555;cursor:not-allowed">'
-                    f'<input type="hidden" name="region" value="{region_f}">')
-        o = '<option value="">All Regions</option>'
+            rn = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), "All Regions")
+            return f'<div class="custom-select-locked">{rn}</div>'
+        label = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), "All Regions")
+        opts = f'<a href="{cascade_url()}" class="{"selected" if not region_f else ""}">All Regions</a>'
         for rid, rn in region_opts:
-            s = "selected" if str(rid) == str(region_f) else ""
-            o += f'<option value="{rid}" {s}>{rn.replace("&","&amp;")}</option>'
-        return f'<select name="region" class="filter-select" onchange="this.form.submit()">{o}</select>'
+            sc = "selected" if str(rid) == str(region_f) else ""
+            opts += f'<a href="{cascade_url(region=str(rid))}" class="{sc}">{rn.replace("&","&amp;")}</a>'
+        return (f'<details class="custom-select">'
+                f'<summary>{label}</summary>'
+                f'<div class="custom-select-options">{opts}</div>'
+                f'</details>')
 
     def sel_country():
-        o = '<option value="">All Countries</option>'
+        label = next((cn for cid, cn in country_opts if cid == country_f), "All Countries")
+        # "All Countries" clears country but keeps current region for cascade
+        opts = f'<a href="{cascade_url(region=region_f)}" class="{"selected" if not country_f else ""}">All Countries</a>'
         for cid, cn in country_opts:
-            s = "selected" if cid == country_f else ""
-            o += f'<option value="{cid}" {s}>{cn}</option>'
-        return f'<select name="country" class="filter-select" onchange="this.form.submit()">{o}</select>'
+            sc = "selected" if cid == country_f else ""
+            opts += f'<a href="{cascade_url(country=cid)}" class="{sc}">{cn}</a>'
+        return (f'<details class="custom-select">'
+                f'<summary>{label}</summary>'
+                f'<div class="custom-select-options">{opts}</div>'
+                f'</details>')
 
     def sel_sort():
         o = ""
@@ -367,37 +391,17 @@ def get_page_html(form_data):
 <div class="filter-card">
     <div class="filter-row">
 
-        <!--
-            FORM 1 — Cascade form (Region & Country)
-            Submits automatically on dropdown change via onchange="this.form.submit()".
-            Passes applied_region/applied_country through as hidden fields unchanged
-            so the tables do NOT reload when the dropdown changes.
-        -->
-        <form method="GET" action="/binh_page_2" style="display:contents">
-            <input type="hidden" name="antigen"         value="{antigen_f}">
-            <input type="hidden" name="year"            value="{year_f}">
-            <input type="hidden" name="sort"            value="{sort_f}">
-            <input type="hidden" name="sort2"           value="{sort2_f}">
-            <input type="hidden" name="page1"           value="1">
-            <input type="hidden" name="page2"           value="1">
-            <input type="hidden" name="applied_region"  value="{applied_region_f}">
-            <input type="hidden" name="applied_country" value="{applied_country_f}">
-            <div class="filter-group">
-                <label>Region</label>
-                {sel_region()}
-            </div>
-            <div class="filter-group">
-                <label>Country</label>
-                {sel_country()}
-            </div>
-        </form>
+        <!-- Region & Country: <details>/<a> links — pure HTML/CSS, zero JavaScript -->
+        <div class="filter-group">
+            <label>Region</label>
+            {sel_region()}
+        </div>
+        <div class="filter-group">
+            <label>Country</label>
+            {sel_country()}
+        </div>
 
-        <!--
-            FORM 2 — Apply Filters form (Antigen, Year, Sort + button)
-            Tables only update when this form is submitted.
-            Sets applied_region = region_f and applied_country = country_f
-            so the tables reflect the current dropdown selections.
-        -->
+        <!-- Apply Filters form: tables only update when this is submitted -->
         <form method="GET" action="/binh_page_2" style="display:contents">
             <input type="hidden" name="region"          value="{region_f}">
             <input type="hidden" name="country"         value="{country_f}">
