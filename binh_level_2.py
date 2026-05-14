@@ -79,6 +79,22 @@ def get_page_html(form_data):
 
     where_base = "WHERE " + base_conds()
 
+    def base_conds_t2():
+        c = ["TYPEOF(v.coverage) = 'real'"]
+        if antigen_f:                  c.append(f"v.antigen = '{_esc(antigen_f)}'")
+        if year_f and year_f.isdigit():c.append(f"v.year = {int(year_f)}")
+        # Use applied_region directly, or derive from applied_country if region not set
+        t2_region = applied_region_f
+        if not t2_region and applied_country_f:
+            _r = pyhtml.get_results_from_query(db,
+                f"SELECT region FROM Country WHERE CountryID = '{_esc(applied_country_f)}'")
+            if _r:
+                t2_region = str(_r[0][0])
+        if t2_region:                  c.append(f"c.region  = '{_esc(t2_region)}'")
+        return " AND ".join(c)
+
+    where_base_t2 = "WHERE " + base_conds_t2()
+
     JOINS = """FROM Vaccination v
         JOIN Country c ON v.country = c.CountryID
         JOIN Region  r ON c.region  = r.RegionID
@@ -157,7 +173,7 @@ def get_page_html(form_data):
             SELECT v.antigen, v.year, v.country, c.region AS reg_id
             FROM Vaccination v
             JOIN Country c ON v.country = c.CountryID
-            {where_base}
+            {where_base_t2}
             GROUP BY v.antigen, v.year, v.country
             HAVING AVG(v.coverage) >= 90
         ) sub

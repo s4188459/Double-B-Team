@@ -92,6 +92,12 @@ def get_nav_html(active_page="/"):
         <a href="#">English</a>
         <span class="divider">|</span>
         <a href="#">Vietnamese</a>
+        <span class="divider">|</span>
+        <a href="#">Italian</a>
+        <span class="divider">|</span>
+        <a href="#">French</a>
+        <span class="divider">|</span>
+        <a href="#">German</a>
     </div>
 
     <!-- Main header -->
