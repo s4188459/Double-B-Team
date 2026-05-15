@@ -1,5 +1,4 @@
 import os
-import re
 import urllib.parse
 import pyhtml
 import nav
@@ -12,10 +11,6 @@ def _esc(s):
     return str(s).replace("'", "''")
 
 
-# trims DB antigen names down to a short display label
-def _antigen_name(full_name):
-    n = full_name.split(",")[0]
-    return re.sub(r'-containing vaccine', '', n, flags=re.IGNORECASE).strip()
 
 
 # returns CSS class for coverage badge coloring: green ≥90%, yellow ≥70%, red below
@@ -36,6 +31,8 @@ def get_page_html(form_data):
     # these are what the tables actually filter on — only update when user hits Apply Filters
     applied_region_f  = _get("applied_region")
     applied_country_f = _get("applied_country")
+    applied_antigen_f = _get("applied_antigen")
+    applied_year_f    = _get("applied_year")
 
     antigen_f = _get("antigen")
     year_f    = _get("year")
@@ -74,27 +71,18 @@ def get_page_html(form_data):
     def base_conds():
         # typeof='real' skips rows where missing coverage is stored as empty string rather than NULL
         c = ["TYPEOF(v.coverage) = 'real'"]
-        if antigen_f:                  c.append(f"v.antigen = '{_esc(antigen_f)}'")
-        if year_f and year_f.isdigit():c.append(f"v.year = {int(year_f)}")
-        if applied_region_f:           c.append(f"c.region  = '{_esc(applied_region_f)}'")
-        if applied_country_f:          c.append(f"v.country = '{_esc(applied_country_f)}'")
+        if applied_antigen_f:                          c.append(f"v.antigen = '{_esc(applied_antigen_f)}'")
+        if applied_year_f and applied_year_f.isdigit():c.append(f"v.year = {int(applied_year_f)}")
+        if applied_region_f:                           c.append(f"c.region  = '{_esc(applied_region_f)}'")
+        if applied_country_f:                          c.append(f"v.country = '{_esc(applied_country_f)}'")
         return " AND ".join(c)
 
     where_base = "WHERE " + base_conds()
 
-    # WHERE clause builder for Table 2 — derives region from applied_country when no region is set
     def base_conds_t2():
         c = ["TYPEOF(v.coverage) = 'real'"]
-        if antigen_f:                  c.append(f"v.antigen = '{_esc(antigen_f)}'")
-        if year_f and year_f.isdigit():c.append(f"v.year = {int(year_f)}")
-        # fall back to deriving region from applied_country if applied_region isn't set directly
-        t2_region = applied_region_f
-        if not t2_region and applied_country_f:
-            _r = pyhtml.get_results_from_query(db,
-                f"SELECT region FROM Country WHERE CountryID = '{_esc(applied_country_f)}'")
-            if _r:
-                t2_region = str(_r[0][0])
-        if t2_region:                  c.append(f"c.region  = '{_esc(t2_region)}'")
+        if applied_antigen_f:                          c.append(f"v.antigen = '{_esc(applied_antigen_f)}'")
+        if applied_year_f and applied_year_f.isdigit():c.append(f"v.year = {int(applied_year_f)}")
         return " AND ".join(c)
 
     where_base_t2 = "WHERE " + base_conds_t2()
@@ -119,12 +107,8 @@ def get_page_html(form_data):
     SORT_LABELS = {
         "coverage_desc": "% of Target (High→Low)",
         "coverage_asc":  "% of Target (Low→High)",
-        "year_desc":     "Year (Newest First)",
-        "year_asc":      "Year (Oldest First)",
         "country_asc":   "Country (A→Z)",
         "country_desc":  "Country (Z→A)",
-        "antigen_asc":   "Antigen (A→Z)",
-        "antigen_desc":  "Antigen (Z→A)",
         "region_asc":    "Region (A→Z)",
         "region_desc":   "Region (Z→A)",
     }
@@ -142,6 +126,38 @@ def get_page_html(form_data):
     }
     order_by2 = SORT2_MAP.get(sort2_f, "countries_met DESC")
 
+    # tables and charts only activate when the user has applied both a specific antigen and year
+    tables_active = bool(applied_antigen_f and applied_year_f and applied_year_f.isdigit())
+    antigen_display = applied_antigen_f
+
+    country_display = ""
+    if applied_country_f:
+        _cr = pyhtml.get_results_from_query(db,
+            f"SELECT name FROM Country WHERE CountryID = '{_esc(applied_country_f)}'")
+        if _cr:
+            country_display = str(_cr[0][0])
+
+    region_display = next((rname for rid, rname in region_opts if rid == applied_region_f), "") if applied_region_f else ""
+
+    def _t1_title_base():
+        if not tables_active:
+            return "Countries Meeting &ge;90% Vaccination Target"
+        if applied_country_f and country_display:
+            return f"{country_display} Meeting &ge;90% Vaccination Target for {antigen_display} in {applied_year_f}"
+        if applied_region_f and region_display:
+            return f"{region_display} Countries Meeting &ge;90% Vaccination Target for {antigen_display} in {applied_year_f}"
+        return f"Countries Meeting &ge;90% Vaccination Target of {antigen_display} in {applied_year_f}"
+
+    def t1_country_miss_msg():
+        name = country_display or applied_country_f
+        return f'<div class="chart-msg">{name} does not meet the &ge;90% vaccination target for {antigen_display} in {applied_year_f}</div>'
+
+    def inactive_msg():
+        missing = []
+        if not applied_antigen_f: missing.append("an <strong>Antigen</strong>")
+        if not (applied_year_f and applied_year_f.isdigit()): missing.append("a <strong>Year</strong>")
+        return f'<div class="chart-msg">Please select {" and ".join(missing)} then click <strong>Apply Filters</strong> to view this data</div>'
+
     # Table 1: countries that hit ≥90% coverage — GROUP BY + AVG handles duplicate rows
     t1_inner = f"""
         SELECT a.AntigenID, v.year, c.name AS country_name,
@@ -152,17 +168,21 @@ def get_page_html(form_data):
         GROUP BY a.AntigenID, v.year, v.country
         HAVING AVG(v.coverage) >= 90"""
 
-    cnt1  = pyhtml.get_results_from_query(db, f"SELECT COUNT(*) FROM ({t1_inner})")[0][0]
-    n_ctr = pyhtml.get_results_from_query(db, f"""
-        SELECT COUNT(DISTINCT v.country) {JOINS} {where_base}
-        AND v.coverage >= 90""")[0][0]
-
-    total_p1 = max(1, -(-cnt1 // ROWS_PER_PAGE))
-    page1    = min(page1, total_p1)
-    rows1    = pyhtml.get_results_from_query(db, f"""
-        {t1_inner}
-        ORDER BY {order_by}
-        LIMIT {ROWS_PER_PAGE} OFFSET {(page1-1)*ROWS_PER_PAGE}""")
+    if tables_active:
+        cnt1  = pyhtml.get_results_from_query(db, f"SELECT COUNT(*) FROM ({t1_inner})")[0][0]
+        n_ctr = pyhtml.get_results_from_query(db, f"""
+            SELECT COUNT(DISTINCT v.country) {JOINS} {where_base}
+            AND v.coverage >= 90""")[0][0]
+        total_p1 = max(1, -(-cnt1 // ROWS_PER_PAGE))
+        page1    = min(page1, total_p1)
+        rows1    = pyhtml.get_results_from_query(db, f"""
+            {t1_inner}
+            ORDER BY {order_by}
+            LIMIT {ROWS_PER_PAGE} OFFSET {(page1-1)*ROWS_PER_PAGE}""")
+    else:
+        cnt1 = n_ctr = 0
+        total_p1 = 1
+        rows1 = []
 
     # Table 2: per region — counts how many countries met ≥90% for the selected filters
     t2_inner = f"""
@@ -180,17 +200,25 @@ def get_page_html(form_data):
         JOIN Antigen a ON sub.antigen = a.AntigenID
         GROUP BY a.AntigenID, sub.year, r.RegionID"""
 
-    cnt2     = pyhtml.get_results_from_query(db, f"SELECT COUNT(*) FROM ({t2_inner})")[0][0]
-    total_p2 = max(1, -(-cnt2 // ROWS_PER_PAGE))
-    page2    = min(page2, total_p2)
-    rows2    = pyhtml.get_results_from_query(db, f"""
-        {t2_inner}
-        ORDER BY {order_by2}
-        LIMIT {ROWS_PER_PAGE} OFFSET {(page2-1)*ROWS_PER_PAGE}""")
+    if tables_active:
+        cnt2     = pyhtml.get_results_from_query(db, f"SELECT COUNT(*) FROM ({t2_inner})")[0][0]
+        total_p2 = max(1, -(-cnt2 // ROWS_PER_PAGE))
+        page2    = min(page2, total_p2)
+        rows2    = pyhtml.get_results_from_query(db, f"""
+            {t2_inner}
+            ORDER BY {order_by2}
+            LIMIT {ROWS_PER_PAGE} OFFSET {(page2-1)*ROWS_PER_PAGE}""")
+    else:
+        cnt2 = 0
+        total_p2 = 1
+        rows2 = []
 
     # pull all filtered rows (no pagination limit) for the Excel export
-    _exp1 = pyhtml.get_results_from_query(db, f"{t1_inner} ORDER BY {order_by}")
-    _exp2 = pyhtml.get_results_from_query(db, f"{t2_inner} ORDER BY {order_by2}")
+    if tables_active:
+        _exp1 = pyhtml.get_results_from_query(db, f"{t1_inner} ORDER BY {order_by}")
+        _exp2 = pyhtml.get_results_from_query(db, f"{t2_inner} ORDER BY {order_by2}")
+    else:
+        _exp1 = _exp2 = []
 
     # wraps rows in an Excel-compatible HTML table encoded as a data: URI
     def _xls_export(headers, rows):
@@ -207,8 +235,8 @@ def get_page_html(form_data):
     export1_href = _xls_export(["Antigen", "Year", "Country", "Region", "% of Target"], _exp1)
     export2_href = _xls_export(["Antigen", "Year", "Region", "Countries Met >=90%"], _exp2)
 
-    # chart data only makes sense when a year is chosen — otherwise skip the queries
-    if year_f and year_f.isdigit():
+    # chart data only makes sense when both antigen and year are applied
+    if tables_active:
         # all countries for Chart 1 (no pagination limit)
         chart1_rows = pyhtml.get_results_from_query(db, f"""
             {t1_inner}
@@ -234,12 +262,14 @@ def get_page_html(form_data):
     # URL for region/country dropdown links — each option is a real <a> that reloads the page (no JS needed)
     def cascade_url(region="", country=""):
         p = {}
-        if antigen_f:         p["antigen"]         = antigen_f
-        if year_f:            p["year"]             = year_f
-        if region:            p["region"]           = region
-        if country:           p["country"]          = country
-        if applied_region_f:  p["applied_region"]   = applied_region_f
-        if applied_country_f: p["applied_country"]  = applied_country_f
+        if antigen_f:         p["antigen"]          = antigen_f
+        if year_f:            p["year"]              = year_f
+        if region:            p["region"]            = region
+        if country:           p["country"]           = country
+        if applied_antigen_f: p["applied_antigen"]   = applied_antigen_f
+        if applied_year_f:    p["applied_year"]      = applied_year_f
+        if applied_region_f:  p["applied_region"]    = applied_region_f
+        if applied_country_f: p["applied_country"]   = applied_country_f
         if sort_f  and sort_f  != "coverage_desc":  p["sort"]  = sort_f
         if sort2_f and sort2_f != "countries_desc": p["sort2"] = sort2_f
         if t1_view_f == "chart": p["t1_view"] = t1_view_f
@@ -252,12 +282,14 @@ def get_page_html(form_data):
     # general URL builder — carries all current filter params forward, overriding with kw
     def url(**kw):
         p = {}
-        if antigen_f:         p["antigen"]         = antigen_f
-        if year_f:            p["year"]             = year_f
-        if region_f:          p["region"]           = region_f
-        if country_f:         p["country"]          = country_f
-        if applied_region_f:  p["applied_region"]   = applied_region_f
-        if applied_country_f: p["applied_country"]  = applied_country_f
+        if antigen_f:         p["antigen"]          = antigen_f
+        if year_f:            p["year"]              = year_f
+        if region_f:          p["region"]            = region_f
+        if country_f:         p["country"]           = country_f
+        if applied_antigen_f: p["applied_antigen"]   = applied_antigen_f
+        if applied_year_f:    p["applied_year"]      = applied_year_f
+        if applied_region_f:  p["applied_region"]    = applied_region_f
+        if applied_country_f: p["applied_country"]   = applied_country_f
         if sort_f  and sort_f  != "coverage_desc":  p["sort"]  = sort_f
         if sort2_f and sort2_f != "countries_desc": p["sort2"] = sort2_f
         if t1_view_f == "chart": p["t1_view"] = t1_view_f
@@ -270,11 +302,10 @@ def get_page_html(form_data):
 
     # filter tags shown in the results bar — reflect applied_* not the dropdown UI state
     filter_tags = ""
-    if antigen_f:
-        nm = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), antigen_f)
-        filter_tags += f'<span class="filter-tag">{nm}</span> '
-    if year_f:
-        filter_tags += f'<span class="filter-tag">{year_f}</span> '
+    if applied_antigen_f:
+        filter_tags += f'<span class="filter-tag">{applied_antigen_f}</span> '
+    if applied_year_f:
+        filter_tags += f'<span class="filter-tag">{applied_year_f}</span> '
     if applied_region_f:
         rn = next((rn for rid, rn in region_opts if str(rid) == str(applied_region_f)), applied_region_f)
         filter_tags += f'<span class="filter-tag">{rn}</span> '
@@ -287,21 +318,27 @@ def get_page_html(form_data):
         filter_tags = '<span style="color:#777;font-size:13px">All data</span> '
 
     def sel_antigen():
-        label = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), "All Antigens")
+        label = antigen_f if antigen_f else "Select Antigen"
         opts = f'<a href="{url(antigen="", page1="1", page2="1")}" class="{"selected" if not antigen_f else ""}">All Antigens</a>'
-        for aid, an in antigen_opts:
+        for aid, _ in antigen_opts:
             sc = "selected" if aid == antigen_f else ""
-            opts += f'<a href="{url(antigen=aid, page1="1", page2="1")}" class="{sc}">{_antigen_name(an)}</a>'
-        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{label}</button>'
+            opts += f'<a href="{url(antigen=aid, page1="1", page2="1")}" class="{sc}">{aid}</a>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<input type="checkbox" id="dd-antigen" class="dd-toggle">'
+                f'<label for="dd-antigen" class="dd-backdrop"></label>'
+                f'<label for="dd-antigen" class="custom-select-btn">{label}</label>'
                 f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_year():
-        label = year_f if year_f else "All Years"
+        label = year_f if year_f else "Select Year"
         opts = f'<a href="{url(year="", page1="1", page2="1")}" class="{"selected" if not year_f else ""}">All Years</a>'
         for (yr,) in year_opts:
             sc = "selected" if str(yr) == year_f else ""
             opts += f'<a href="{url(year=str(yr), page1="1", page2="1")}" class="{sc}">{yr}</a>'
-        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{label}</button>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<input type="checkbox" id="dd-year" class="dd-toggle">'
+                f'<label for="dd-year" class="dd-backdrop"></label>'
+                f'<label for="dd-year" class="custom-select-btn">{label}</label>'
                 f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_region():
@@ -315,7 +352,9 @@ def get_page_html(form_data):
             sc = "selected" if str(rid) == str(region_f) else ""
             opts += f'<a href="{cascade_url(region=str(rid))}" class="{sc}">{rn.replace("&","&amp;")}</a>'
         return (f'<div class="custom-select css-dropdown">'
-                f'<button type="button" class="custom-select-btn">{label}</button>'
+                f'<input type="checkbox" id="dd-region" class="dd-toggle">'
+                f'<label for="dd-region" class="dd-backdrop"></label>'
+                f'<label for="dd-region" class="custom-select-btn">{label}</label>'
                 f'<div class="custom-select-options">{opts}</div>'
                 f'</div>')
 
@@ -327,7 +366,9 @@ def get_page_html(form_data):
             sc = "selected" if cid == country_f else ""
             opts += f'<a href="{cascade_url(country=cid)}" class="{sc}">{cn}</a>'
         return (f'<div class="custom-select css-dropdown">'
-                f'<button type="button" class="custom-select-btn">{label}</button>'
+                f'<input type="checkbox" id="dd-country" class="dd-toggle">'
+                f'<label for="dd-country" class="dd-backdrop"></label>'
+                f'<label for="dd-country" class="custom-select-btn">{label}</label>'
                 f'<div class="custom-select-options">{opts}</div>'
                 f'</div>')
 
@@ -337,7 +378,10 @@ def get_page_html(form_data):
         for val, lbl in SORT_LABELS.items():
             sc = "selected" if val == sort_f else ""
             opts += f'<a href="{url(sort=val, page1="1", page2="1")}" class="{sc}">{lbl}</a>'
-        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{label}</button>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<input type="checkbox" id="dd-sort" class="dd-toggle">'
+                f'<label for="dd-sort" class="dd-backdrop"></label>'
+                f'<label for="dd-sort" class="custom-select-btn">{label}</label>'
                 f'<div class="custom-select-options">{opts}</div></div>')
 
     def rows1_html():
@@ -414,9 +458,11 @@ def get_page_html(form_data):
 
     # horizontal bar chart — shows all countries meeting ≥90%, scrollable if more than 15
     def chart1_html():
-        title = '<div class="table-header-row"><span class="table-title">COUNTRIES BY VACCINATION COVERAGE (≥90%)</span></div>'
-        if not year_f:
-            return title + '<div class="chart-msg">Please select a <strong>Year</strong> to view this chart</div>'
+        title = f'<div class="table-header-row"><span class="table-title">{_t1_title_base()}</span></div>'
+        if not tables_active:
+            return title + inactive_msg()
+        if applied_country_f and cnt1 == 0:
+            return title + t1_country_miss_msg()
         if len(chart1_rows) < 2:
             return title + '<div class="chart-msg">Not enough data — need at least 2 countries to display a chart</div>'
         max_val = max((pct or 0) for _, _, _, _, pct in chart1_rows) or 1
@@ -436,9 +482,11 @@ def get_page_html(form_data):
 
     # vertical bar chart — one bar per region, height = number of countries that met the target
     def chart2_html():
-        title = '<div class="table-header-row"><span class="table-title">COUNTRIES MEETING ≥90% BY REGION</span></div>'
-        if not year_f:
-            return title + '<div class="chart-msg">Please select a <strong>Year</strong> to view this chart</div>'
+        title_text = (f"Region Summary of {antigen_display} in {applied_year_f}"
+                      if tables_active else "Region Summary")
+        title = f'<div class="table-header-row"><span class="table-title">{title_text}</span></div>'
+        if not tables_active:
+            return title + inactive_msg()
         if len(chart2_rows) < 2:
             return title + '<div class="chart-msg">Not enough data — need at least 2 regions to display a chart</div>'
         max_val = max(cnt for _, cnt in chart2_rows) or 1
@@ -452,10 +500,62 @@ def get_page_html(form_data):
                        f'<div class="bar-col-fill" style="height:{h}px;background:{color}"></div>'
                        f'</div>')
             labels += f'<div class="bar-col-label" title="{rname}">{rname}</div>'
-        return (f'<div class="bar-chart-v-wrap">'
+        return (title +
+                f'<div class="bar-chart-v-wrap">'
                 f'<div class="bar-chart-v">{cols}</div>'
                 f'<div class="bar-chart-v-labels">{labels}</div>'
                 f'</div>')
+
+    if tables_active:
+        if applied_country_f and cnt1 == 0:
+            t1_panel_content = f"""
+            <div class="table-header-row">
+                <span class="table-title">Table 1: {_t1_title_base()}</span>
+            </div>
+            {t1_country_miss_msg()}"""
+        else:
+            t1_panel_content = f"""
+            <div class="table-header-row">
+                <span class="table-title">Table 1: {_t1_title_base()}</span>
+                <a href="{export1_href}" download="vaccination_table1.xls" class="export-btn">
+                    <img src="/images/export%20icon.png" alt=""> Export Data
+                </a>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead><tr>
+                        {th1("Antigen",      "antigen_asc",  "antigen_desc")}
+                        {th1("Year",         "year_asc",     "year_desc")}
+                        {th1("Country",      "country_asc",  "country_desc")}
+                        {th1("Region",       "region_asc",   "region_desc")}
+                        {th1("% of Target",  "coverage_asc", "coverage_desc")}
+                    </tr></thead>
+                    <tbody>{rows1_html()}</tbody>
+                </table>
+            </div>
+            {paginate(page1, total_p1, "page1", cnt1)}"""
+        t2_panel_content = f"""
+            <div class="table-header-row">
+                <span class="table-title">Region Summary of {antigen_display} in {applied_year_f}</span>
+                <a href="{export2_href}" download="vaccination_table2.xls" class="export-btn">
+                    <img src="/images/export%20icon.png" alt=""> Export Data
+                </a>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead><tr>
+                        {th2("Antigen",            "antigen2_asc",  "antigen2_desc")}
+                        {th2("Year",               "year2_asc",     "year2_desc")}
+                        {th2("Countries met ≥90%", "countries_asc", "countries_desc")}
+                        {th2("Region",             "region2_asc",   "region2_desc")}
+                    </tr></thead>
+                    <tbody>{rows2_html()}</tbody>
+                </table>
+            </div>
+            {paginate(page2, total_p2, "page2", cnt2)}"""
+    else:
+        t1_panel_content = inactive_msg()
+        t2_panel_content = inactive_msg()
 
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
@@ -493,16 +593,18 @@ def get_page_html(form_data):
 
         <!-- Apply Filters: applies region/country to tables; hidden fields preserve current params -->
         <form method="GET" action="/binh_page_2" style="display:contents">
-            <input type="hidden" name="antigen"         value="{antigen_f}">
-            <input type="hidden" name="year"            value="{year_f}">
-            <input type="hidden" name="sort"            value="{sort_f}">
-            <input type="hidden" name="sort2"           value="{sort2_f}">
-            <input type="hidden" name="region"          value="{region_f}">
-            <input type="hidden" name="country"         value="{country_f}">
-            <input type="hidden" name="applied_region"  value="{region_f}">
-            <input type="hidden" name="applied_country" value="{country_f}">
-            <input type="hidden" name="t1_view"         value="{t1_view_f}">
-            <input type="hidden" name="t2_view"         value="{t2_view_f}">
+            <input type="hidden" name="antigen"          value="{antigen_f}">
+            <input type="hidden" name="year"             value="{year_f}">
+            <input type="hidden" name="sort"             value="{sort_f}">
+            <input type="hidden" name="sort2"            value="{sort2_f}">
+            <input type="hidden" name="region"           value="{region_f}">
+            <input type="hidden" name="country"          value="{country_f}">
+            <input type="hidden" name="applied_antigen"  value="{antigen_f}">
+            <input type="hidden" name="applied_year"     value="{year_f}">
+            <input type="hidden" name="applied_region"   value="{region_f}">
+            <input type="hidden" name="applied_country"  value="{country_f}">
+            <input type="hidden" name="t1_view"          value="{t1_view_f}">
+            <input type="hidden" name="t2_view"          value="{t2_view_f}">
             <div class="filter-actions">
                 <button type="submit" class="btn-apply">
                     <img src="/images/filter%20icon.png" alt=""> Apply Filters
@@ -539,25 +641,7 @@ def get_page_html(form_data):
             </div>
         </div>
         <div class="t1-table-panel">
-            <div class="table-header-row">
-                <span class="table-title">Table 1: Countries Meeting &ge;90% Vaccination Target</span>
-                <a href="{export1_href}" download="vaccination_table1.xls" class="export-btn">
-                    <img src="/images/export%20icon.png" alt=""> Export Data
-                </a>
-            </div>
-            <div class="table-wrapper">
-                <table class="data-table">
-                    <thead><tr>
-                        {th1("Antigen",      "antigen_asc",  "antigen_desc")}
-                        {th1("Year",         "year_asc",     "year_desc")}
-                        {th1("Country",      "country_asc",  "country_desc")}
-                        {th1("Region",       "region_asc",   "region_desc")}
-                        {th1("% of Target",  "coverage_asc", "coverage_desc")}
-                    </tr></thead>
-                    <tbody>{rows1_html()}</tbody>
-                </table>
-            </div>
-            {paginate(page1, total_p1, "page1", cnt1)}
+            {t1_panel_content}
         </div>
         <div class="t1-chart-panel">
             {chart1_html()}
@@ -575,24 +659,7 @@ def get_page_html(form_data):
             </div>
         </div>
         <div class="t2-table-panel">
-            <div class="table-header-row">
-                <span class="table-title">Table 2: Region Summary</span>
-                <a href="{export2_href}" download="vaccination_table2.xls" class="export-btn">
-                    <img src="/images/export%20icon.png" alt=""> Export Data
-                </a>
-            </div>
-            <div class="table-wrapper">
-                <table class="data-table">
-                    <thead><tr>
-                        {th2("Antigen",            "antigen2_asc",  "antigen2_desc")}
-                        {th2("Year",               "year2_asc",     "year2_desc")}
-                        {th2("Countries met ≥90%", "countries_asc", "countries_desc")}
-                        {th2("Region",             "region2_asc",   "region2_desc")}
-                    </tr></thead>
-                    <tbody>{rows2_html()}</tbody>
-                </table>
-            </div>
-            {paginate(page2, total_p2, "page2", cnt2)}
+            {t2_panel_content}
         </div>
         <div class="t2-chart-panel">
             {chart2_html()}

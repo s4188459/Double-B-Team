@@ -759,7 +759,7 @@ a {
 }
 .filter-row   { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .filter-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 110px; }
-.filter-group label { font-size: 14px; font-weight: 700; color: #444; }
+.filter-group > label { font-size: 14px; font-weight: 700; color: #444; }
 .filter-select {
     border: 1.5px solid #d0d4da;
     border-radius: 8px;
@@ -782,8 +782,8 @@ a {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     user-select: none;
     position: relative;
+    z-index: 201;
 }
-.custom-select-btn:focus { outline: none; border-color: #1a7cd4; }
 .custom-select-btn::after {
     content: '';
     position: absolute;
@@ -795,9 +795,12 @@ a {
     transition: transform 0.25s;
     pointer-events: none;
 }
-.css-dropdown:focus-within .custom-select-btn::after { transform: translateY(-50%) rotate(180deg); }
+.dd-toggle { display: none; }
+.dd-backdrop { display: none; }
 .css-dropdown .custom-select-options { display: none; }
-.css-dropdown:focus-within .custom-select-options { display: block; }
+.dd-toggle:checked ~ .custom-select-options { display: block; }
+.dd-toggle:checked ~ .custom-select-btn::after { transform: translateY(-50%) rotate(180deg); }
+.dd-toggle:checked ~ .dd-backdrop { display: block; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 199; cursor: default; }
 .custom-select-options {
     position: absolute;
     top: 100%; left: 0; right: 0;

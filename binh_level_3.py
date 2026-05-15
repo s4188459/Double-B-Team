@@ -1,5 +1,4 @@
 import os
-import re
 import urllib.parse
 import pyhtml
 import nav
@@ -10,10 +9,6 @@ ROWS_PER_PAGE = 10
 def _esc(s):
     return str(s).replace("'", "''")
 
-# trims DB antigen names down to a short display label
-def _antigen_name(full_name):
-    n = full_name.split(",")[0]
-    return re.sub(r'-containing vaccine', '', n, flags=re.IGNORECASE).strip()
 
 # CSS class for coverage badge coloring
 def _cov_class(v):
@@ -39,6 +34,12 @@ def get_page_html(form_data):
     top_f        = _get("top",        "10")
     sort_f       = _get("sort",       "increase_desc")
     t3_view_f    = _get("t3_view",    "table")
+
+    # applied_* values only update when user clicks Apply Filters
+    applied_antigen_f    = _get("applied_antigen")
+    applied_start_year_f = _get("applied_start_year", "2000")
+    applied_end_year_f   = _get("applied_end_year",   "2024")
+    applied_top_f        = _get("applied_top",        "10")
 
     try: page = max(1, int(_get("page", "1")))
     except: page = 1
@@ -66,6 +67,14 @@ def get_page_html(form_data):
     TOP_MAP  = {v: int(v) for v, _ in TOP_OPTS}
     top_n    = TOP_MAP.get(top_f, 10)
 
+    try: applied_start_y = int(applied_start_year_f)
+    except: applied_start_y = 2000
+    try: applied_end_y = int(applied_end_year_f)
+    except: applied_end_y = 2024
+    if applied_end_y < applied_start_y:
+        applied_start_y, applied_end_y = applied_end_y, applied_start_y
+    applied_top_n = TOP_MAP.get(applied_top_f, 10)
+
     SORT_MAP = {
         "increase_desc":  "(e.coverage - s.coverage) DESC",
         "increase_asc":   "(e.coverage - s.coverage) ASC",
@@ -92,7 +101,14 @@ def get_page_html(form_data):
     }
     order_expr = SORT_MAP.get(sort_f, "(e.coverage - s.coverage) DESC")
 
-    a_cond = f"AND antigen = '{_esc(antigen_f)}'" if antigen_f else ""
+    # table and chart only activate when a specific antigen has been applied
+    table_active    = bool(applied_antigen_f)
+    antigen_display = applied_antigen_f
+
+    def inactive_msg():
+        return '<div class="chart-msg">Please select an <strong>Antigen</strong> then click <strong>Apply Filters</strong> to view this data</div>'
+
+    a_cond = f"AND antigen = '{_esc(applied_antigen_f)}'" if applied_antigen_f else ""
 
     # builds a subquery for a single year: rate = doses / population × 100
     # AVG + GROUP BY prevents cross-product duplicates when no antigen filter is set
@@ -111,8 +127,8 @@ def get_page_html(form_data):
     join_sql = f"""
         FROM Country c
         JOIN Region  r ON c.region     = r.RegionID
-        JOIN {_sub(start_y)} s ON c.CountryID = s.country
-        JOIN {_sub(end_y)}   e ON c.CountryID = e.country"""
+        JOIN {_sub(applied_start_y)} s ON c.CountryID = s.country
+        JOIN {_sub(applied_end_y)}   e ON c.CountryID = e.country"""
 
     select_cols = """
         c.name                                      AS country_name,
@@ -121,16 +137,19 @@ def get_page_html(form_data):
         ROUND(e.coverage, 2)                        AS end_rate,
         ROUND(e.coverage - s.coverage, 2)           AS increase"""
 
-    # total count for the results bar — no Top N limit here
-    n_total = pyhtml.get_results_from_query(db,
-        f"SELECT COUNT(*) {join_sql}")[0][0]
-
-    # sorted and limited to Top N in SQL — no Python post-processing
-    top_rows = pyhtml.get_results_from_query(db, f"""
-        SELECT {select_cols}
-        {join_sql}
-        ORDER BY {order_expr}
-        LIMIT {top_n}""")
+    if table_active:
+        # total count for the results bar — no Top N limit here
+        n_total = pyhtml.get_results_from_query(db,
+            f"SELECT COUNT(*) {join_sql}")[0][0]
+        # sorted and limited to Top N in SQL — no Python post-processing
+        top_rows = pyhtml.get_results_from_query(db, f"""
+            SELECT {select_cols}
+            {join_sql}
+            ORDER BY {order_expr}
+            LIMIT {applied_top_n}""")
+    else:
+        n_total  = 0
+        top_rows = []
 
     # paginate within the already-limited top_rows slice
     cnt         = len(top_rows)
@@ -141,12 +160,16 @@ def get_page_html(form_data):
     # URL builder — carries all current params forward, overriding with kw
     def url(**kw):
         p = {}
-        if antigen_f:        p["antigen"]    = antigen_f
+        if antigen_f:        p["antigen"]         = antigen_f
         p["start_year"]  = str(start_y)
         p["end_year"]    = str(end_y)
-        if top_f != "10":    p["top"]        = top_f
-        if sort_f != "increase_desc": p["sort"] = sort_f
-        if t3_view_f == "chart": p["t3_view"] = t3_view_f
+        if top_f != "10":    p["top"]             = top_f
+        if sort_f != "increase_desc": p["sort"]   = sort_f
+        if t3_view_f == "chart": p["t3_view"]     = t3_view_f
+        if applied_antigen_f:    p["applied_antigen"]    = applied_antigen_f
+        p["applied_start_year"] = str(applied_start_y)
+        p["applied_end_year"]   = str(applied_end_y)
+        if applied_top_f != "10": p["applied_top"] = applied_top_f
         p["page"] = str(page)
         p.update(kw)
         qs = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in p.items() if v)
@@ -157,19 +180,21 @@ def get_page_html(form_data):
         return url(start_year=str(start_year), end_year=str(end_year), page="1")
 
     filter_tags = ""
-    if antigen_f:
-        nm = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), antigen_f)
-        filter_tags += f'<span class="filter-tag">{nm}</span> '
-    filter_tags += f'<span class="filter-tag">{start_y} → {end_y}</span> '
-    filter_tags += f'<span class="filter-tag">Top {top_n}</span> '
+    if applied_antigen_f:
+        filter_tags += f'<span class="filter-tag">{applied_antigen_f}</span> '
+    filter_tags += f'<span class="filter-tag">{applied_start_y} → {applied_end_y}</span> '
+    filter_tags += f'<span class="filter-tag">Top {applied_top_n}</span> '
 
     def sel_antigen():
-        label = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), "All Antigens")
+        label = antigen_f if antigen_f else "Select Antigen"
         opts = f'<a href="{url(antigen="", page="1")}" class="{"selected" if not antigen_f else ""}">All Antigens</a>'
-        for aid, an in antigen_opts:
+        for aid, _ in antigen_opts:
             sc = "selected" if aid == antigen_f else ""
-            opts += f'<a href="{url(antigen=aid, page="1")}" class="{sc}">{_antigen_name(an)}</a>'
-        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{label}</button>'
+            opts += f'<a href="{url(antigen=aid, page="1")}" class="{sc}">{aid}</a>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<input type="checkbox" id="dd-antigen" class="dd-toggle">'
+                f'<label for="dd-antigen" class="dd-backdrop"></label>'
+                f'<label for="dd-antigen" class="custom-select-btn">{label}</label>'
                 f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_start_year():
@@ -178,7 +203,9 @@ def get_page_html(form_data):
             sc = "selected" if int(yr) == start_y else ""
             opts += f'<a href="{cascade_year_url(yr, end_y)}" class="{sc}">{yr}</a>'
         return (f'<div class="custom-select css-dropdown">'
-                f'<button type="button" class="custom-select-btn">{start_y}</button>'
+                f'<input type="checkbox" id="dd-start" class="dd-toggle">'
+                f'<label for="dd-start" class="dd-backdrop"></label>'
+                f'<label for="dd-start" class="custom-select-btn">{start_y}</label>'
                 f'<div class="custom-select-options">{opts}</div>'
                 f'</div>')
 
@@ -188,7 +215,9 @@ def get_page_html(form_data):
             sc = "selected" if int(yr) == end_y else ""
             opts += f'<a href="{cascade_year_url(start_y, yr)}" class="{sc}">{yr}</a>'
         return (f'<div class="custom-select css-dropdown">'
-                f'<button type="button" class="custom-select-btn">{end_y}</button>'
+                f'<input type="checkbox" id="dd-end" class="dd-toggle">'
+                f'<label for="dd-end" class="dd-backdrop"></label>'
+                f'<label for="dd-end" class="custom-select-btn">{end_y}</label>'
                 f'<div class="custom-select-options">{opts}</div>'
                 f'</div>')
 
@@ -284,7 +313,7 @@ def get_page_html(form_data):
             s = str(v if v is not None else "")
             return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         headers = ["Rank", "Country", "Region",
-                   f"Coverage {start_y} (%)", f"Coverage {end_y} (%)", "Increase (%)"]
+                   f"Coverage {applied_start_y} (%)", f"Coverage {applied_end_y} (%)", "Increase (%)"]
         ths = "".join(f"<th>{esc(h)}</th>" for h in headers)
         trs = ""
         for i, (cn, rn, sc, ec, d) in enumerate(top_rows):
@@ -301,7 +330,11 @@ def get_page_html(form_data):
 
     # horizontal bar chart — green for improvement, red for decline, scrollable when Top ≥ 20
     def chart3_html():
-        title = '<div class="table-header-row"><span class="table-title">VACCINATION RATE CHANGE BY COUNTRY</span></div>'
+        title_text = (f"TOP {applied_top_n} COUNTRIES BY VACCINATION RATE INCREASE of {antigen_display} FROM {applied_start_y} TO {applied_end_y}"
+                      if table_active else "TOP COUNTRIES BY VACCINATION RATE INCREASE")
+        title = f'<div class="table-header-row"><span class="table-title">{title_text}</span></div>'
+        if not table_active:
+            return title + inactive_msg()
         if len(top_rows) < 2:
             return title + '<div class="chart-msg">Not enough data — need at least 2 countries to display a chart</div>'
         sorted_rows = sorted(top_rows, key=lambda r: r[4] if r[4] is not None else 0, reverse=True)
@@ -323,9 +356,34 @@ def get_page_html(form_data):
                     f'<span class="bar-val">{sign}{d}%</span>'
                     f'</div>')
         inner = f'<div class="bar-chart-h">{out}</div>'
-        if top_n >= 20:
+        if applied_top_n >= 20:
             inner = f'<div class="bar-chart-scroll">{inner}</div>'
         return title + inner
+
+    if table_active:
+        t3_panel_content = f"""
+            <div class="table-header-row">
+                <span class="table-title">TOP {applied_top_n} COUNTRIES BY VACCINATION RATE INCREASE of {antigen_display} FROM {applied_start_y} TO {applied_end_y}</span>
+                <a href="{export_href}" download="vaccination_improvement.xls" class="export-btn">
+                    <img src="/images/export%20icon.png" alt=""> Export Data
+                </a>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead><tr>
+                        <th>Rank</th>
+                        {th("Country",                                  "country_asc",  "country_desc")}
+                        {th("Region",                                   "region_asc",   "region_desc")}
+                        {th(f"Vaccination Rate In {applied_start_y}",   "start_asc",    "start_desc")}
+                        {th(f"Vaccination Rate In {applied_end_y}",     "end_asc",      "end_desc")}
+                        {th("Vaccination Rate Increase",                "increase_asc", "increase_desc")}
+                    </tr></thead>
+                    <tbody>{rows_html()}</tbody>
+                </table>
+            </div>
+            {paginate()}"""
+    else:
+        t3_panel_content = inactive_msg()
 
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
@@ -363,12 +421,16 @@ def get_page_html(form_data):
 
         <!-- Apply Filters: hidden fields preserve current params when submitted -->
         <form method="GET" action="/binh_page_3" style="display:contents">
-            <input type="hidden" name="antigen"    value="{antigen_f}">
-            <input type="hidden" name="start_year" value="{start_y}">
-            <input type="hidden" name="end_year"   value="{end_y}">
-            <input type="hidden" name="top"        value="{top_f}">
-            <input type="hidden" name="sort"       value="{sort_f}">
-            <input type="hidden" name="t3_view"    value="{t3_view_f}">
+            <input type="hidden" name="antigen"             value="{antigen_f}">
+            <input type="hidden" name="start_year"          value="{start_y}">
+            <input type="hidden" name="end_year"            value="{end_y}">
+            <input type="hidden" name="top"                 value="{top_f}">
+            <input type="hidden" name="sort"                value="{sort_f}">
+            <input type="hidden" name="t3_view"             value="{t3_view_f}">
+            <input type="hidden" name="applied_antigen"     value="{antigen_f}">
+            <input type="hidden" name="applied_start_year"  value="{start_y}">
+            <input type="hidden" name="applied_end_year"    value="{end_y}">
+            <input type="hidden" name="applied_top"         value="{top_f}">
             <div class="filter-actions">
                 <button type="submit" class="btn-apply">
                     <img src="/images/filter%20icon.png" alt=""> Apply Filters
@@ -408,26 +470,7 @@ def get_page_html(form_data):
         </div>
 
         <div class="t3-table-panel">
-            <div class="table-header-row">
-                <span class="table-title">TOP COUNTRIES BY VACCINATION RATE INCREASE</span>
-                <a href="{export_href}" download="vaccination_improvement.xls" class="export-btn">
-                    <img src="/images/export%20icon.png" alt=""> Export Data
-                </a>
-            </div>
-            <div class="table-wrapper">
-                <table class="data-table">
-                    <thead><tr>
-                        <th>Rank</th>
-                        {th("Country",                        "country_asc",  "country_desc")}
-                        {th("Region",                         "region_asc",   "region_desc")}
-                        {th(f"Vaccination Rate In {start_y}", "start_asc",    "start_desc")}
-                        {th(f"Vaccination Rate In {end_y}",   "end_asc",      "end_desc")}
-                        {th("Vaccination Rate Increase",      "increase_asc", "increase_desc")}
-                    </tr></thead>
-                    <tbody>{rows_html()}</tbody>
-                </table>
-            </div>
-            {paginate()}
+            {t3_panel_content}
         </div>
 
         <div class="t3-chart-panel">
@@ -439,10 +482,9 @@ def get_page_html(form_data):
 <div class="info-note">
     <img src="/images/iconinfo.png" class="info-icon-img" alt="">
     <span>Note: Only countries with vaccination and population data for <strong>BOTH</strong>
-    {start_y} and {end_y} are included.
+    {applied_start_y} and {applied_end_y} are included.
     <strong>Vaccination Rate = doses administered &divide; total country population &times; 100</strong>.
-    Increase = End Year Rate &minus; Start Year Rate (percentage points).
-    If no antigen is selected, rates are averaged across all available antigens.</span>
+    Increase = End Year Rate &minus; Start Year Rate (percentage points).</span>
 </div>
 
 {footer_html}
