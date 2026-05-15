@@ -40,6 +40,9 @@ def get_page_html(form_data):
     year_f    = _get("year")
     sort_f    = _get("sort",  "coverage_desc")
     sort2_f   = _get("sort2", "countries_desc")
+    t1_view_f = _get("t1_view", "table")
+    t2_view_f = _get("t2_view", "table")
+    lang_f    = _get("lang",    "en")
 
     try: page1 = max(1, int(_get("page1", "1")))
     except: page1 = 1
@@ -207,6 +210,30 @@ def get_page_html(form_data):
     export1_href = _xls_export(["Antigen", "Year", "Country", "Region", "% of Target"], _exp1)
     export2_href = _xls_export(["Antigen", "Year", "Region", "Countries Met >=90%"], _exp2)
 
+    # ── Chart data — only fetched when Year is selected ──
+    if year_f and year_f.isdigit():
+        # Table 1 chart: all countries by current sort order
+        chart1_rows = pyhtml.get_results_from_query(db, f"""
+            {t1_inner}
+            ORDER BY {order_by}""")
+        # Table 2 chart: distinct countries per region meeting >=90%
+        chart2_rows = pyhtml.get_results_from_query(db, f"""
+            SELECT r.region, COUNT(DISTINCT sub.country) AS countries_met
+            FROM (
+                SELECT v.antigen, v.year, v.country, c.region AS reg_id
+                FROM Vaccination v
+                JOIN Country c ON v.country = c.CountryID
+                {where_base_t2}
+                GROUP BY v.antigen, v.year, v.country
+                HAVING AVG(v.coverage) >= 90
+            ) sub
+            JOIN Region r ON sub.reg_id = r.RegionID
+            GROUP BY r.RegionID
+            ORDER BY countries_met DESC""")
+    else:
+        chart1_rows = []
+        chart2_rows = []
+
     # ── Cascade URL builder — used by <details> region/country nav links ──
     # Each <a> in the dropdown navigates to a new URL → instant page reload, no JS.
     def cascade_url(region="", country=""):
@@ -219,6 +246,9 @@ def get_page_html(form_data):
         if applied_country_f: p["applied_country"]  = applied_country_f
         if sort_f  and sort_f  != "coverage_desc":  p["sort"]  = sort_f
         if sort2_f and sort2_f != "countries_desc": p["sort2"] = sort2_f
+        if t1_view_f == "chart": p["t1_view"] = t1_view_f
+        if t2_view_f == "chart": p["t2_view"] = t2_view_f
+        if lang_f and lang_f != "en": p["lang"] = lang_f
         p["page1"] = "1"
         p["page2"] = "1"
         qs = "&".join(f"{k}={v}" for k, v in p.items() if v)
@@ -235,6 +265,9 @@ def get_page_html(form_data):
         if applied_country_f: p["applied_country"]  = applied_country_f
         if sort_f  and sort_f  != "coverage_desc":  p["sort"]  = sort_f
         if sort2_f and sort2_f != "countries_desc": p["sort2"] = sort2_f
+        if t1_view_f == "chart": p["t1_view"] = t1_view_f
+        if t2_view_f == "chart": p["t2_view"] = t2_view_f
+        if lang_f and lang_f != "en": p["lang"] = lang_f
         p["page1"] = str(page1)
         p["page2"] = str(page2)
         p.update(kw)
@@ -262,18 +295,22 @@ def get_page_html(form_data):
     # ── Dropdown builders ──
 
     def sel_antigen():
-        o = '<option value="">All Antigens</option>'
+        label = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), "All Antigens")
+        opts = f'<a href="{url(antigen="", page1="1", page2="1")}" class="{"selected" if not antigen_f else ""}">All Antigens</a>'
         for aid, an in antigen_opts:
-            s = "selected" if aid == antigen_f else ""
-            o += f'<option value="{aid}" {s}>{_antigen_name(an)}</option>'
-        return f'<select name="antigen" class="filter-select">{o}</select>'
+            sc = "selected" if aid == antigen_f else ""
+            opts += f'<a href="{url(antigen=aid, page1="1", page2="1")}" class="{sc}">{_antigen_name(an)}</a>'
+        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{label}</button>'
+                f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_year():
-        o = '<option value="">All Years</option>'
+        label = year_f if year_f else "All Years"
+        opts = f'<a href="{url(year="", page1="1", page2="1")}" class="{"selected" if not year_f else ""}">All Years</a>'
         for (yr,) in year_opts:
-            s = "selected" if str(yr) == year_f else ""
-            o += f'<option value="{yr}" {s}>{yr}</option>'
-        return f'<select name="year" class="filter-select">{o}</select>'
+            sc = "selected" if str(yr) == year_f else ""
+            opts += f'<a href="{url(year=str(yr), page1="1", page2="1")}" class="{sc}">{yr}</a>'
+        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{label}</button>'
+                f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_region():
         # When a country is selected, region is auto-derived and locked (no interaction)
@@ -281,14 +318,14 @@ def get_page_html(form_data):
             rn = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), "All Regions")
             return f'<div class="custom-select-locked">{rn}</div>'
         label = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), "All Regions")
-        opts = f'<a href="{cascade_url()}" class="{"selected" if not region_f else ""}">All Regions</a>'
+        opts = f'<a href="{cascade_url()}" class="{"selected" if not region_f else ""}">{nav.t("All Regions", lang_f)}</a>'
         for rid, rn in region_opts:
             sc = "selected" if str(rid) == str(region_f) else ""
             opts += f'<a href="{cascade_url(region=str(rid))}" class="{sc}">{rn.replace("&","&amp;")}</a>'
-        return (f'<details class="custom-select">'
-                f'<summary>{label}</summary>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<button type="button" class="custom-select-btn">{label}</button>'
                 f'<div class="custom-select-options">{opts}</div>'
-                f'</details>')
+                f'</div>')
 
     def sel_country():
         label = next((cn for cid, cn in country_opts if cid == country_f), "All Countries")
@@ -297,17 +334,19 @@ def get_page_html(form_data):
         for cid, cn in country_opts:
             sc = "selected" if cid == country_f else ""
             opts += f'<a href="{cascade_url(country=cid)}" class="{sc}">{cn}</a>'
-        return (f'<details class="custom-select">'
-                f'<summary>{label}</summary>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<button type="button" class="custom-select-btn">{label}</button>'
                 f'<div class="custom-select-options">{opts}</div>'
-                f'</details>')
+                f'</div>')
 
     def sel_sort():
-        o = ""
-        for val, label in SORT_LABELS.items():
-            s = "selected" if val == sort_f else ""
-            o += f'<option value="{val}" {s}>{label}</option>'
-        return f'<select name="sort" class="filter-select">{o}</select>'
+        label = SORT_LABELS.get(sort_f, "% of Target (High→Low)")
+        opts = ""
+        for val, lbl in SORT_LABELS.items():
+            sc = "selected" if val == sort_f else ""
+            opts += f'<a href="{url(sort=val, page1="1", page2="1")}" class="{sc}">{lbl}</a>'
+        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{label}</button>'
+                f'<div class="custom-select-options">{opts}</div></div>')
 
     # ── Table row builders ──
 
@@ -379,6 +418,54 @@ def get_page_html(form_data):
                 f'<a href="{url(sort2=next_k, page2="1")}" class="sort-link">'
                 f'{label} {_SIMG}</a></th>')
 
+    # ── Chart helpers ──
+
+    _REGION_COLORS = ["#2980b9", "#27ae60", "#e67e22", "#9b59b6",
+                      "#e74c3c", "#1abc9c", "#f39c12", "#16a085"]
+
+    def chart1_html():
+        title = '<div class="table-header-row"><span class="table-title">COUNTRIES BY VACCINATION COVERAGE (≥90%)</span></div>'
+        if not year_f:
+            return title + '<div class="chart-msg">Please select a <strong>Year</strong> to view this chart</div>'
+        if len(chart1_rows) < 2:
+            return title + '<div class="chart-msg">Not enough data — need at least 2 countries to display a chart</div>'
+        max_val = max((pct or 0) for _, _, _, _, pct in chart1_rows) or 1
+        out = ""
+        for i, (aid, yr, cname, rname, pct) in enumerate(chart1_rows):
+            w = round((pct or 0) / max_val * 100, 1)
+            out += (f'<div class="bar-row">'
+                    f'<span class="bar-rank">{i+1}</span>'
+                    f'<span class="bar-label" title="{cname}">{cname}</span>'
+                    f'<div class="bar-track"><div class="bar-fill-blue" style="width:{w}%"></div></div>'
+                    f'<span class="bar-val">{pct}%</span>'
+                    f'</div>')
+        inner = f'<div class="bar-chart-h">{out}</div>'
+        if len(chart1_rows) > 15:
+            inner = f'<div class="bar-chart-scroll">{inner}</div>'
+        return title + inner
+
+    def chart2_html():
+        title = '<div class="table-header-row"><span class="table-title">COUNTRIES MEETING ≥90% BY REGION</span></div>'
+        if not year_f:
+            return title + '<div class="chart-msg">Please select a <strong>Year</strong> to view this chart</div>'
+        if len(chart2_rows) < 2:
+            return title + '<div class="chart-msg">Not enough data — need at least 2 regions to display a chart</div>'
+        max_val = max(cnt for _, cnt in chart2_rows) or 1
+        MAX_H   = 180
+        cols = labels = ""
+        for idx, (rname, cnt) in enumerate(chart2_rows):
+            color = _REGION_COLORS[idx % len(_REGION_COLORS)]
+            h     = max(4, round(cnt / max_val * MAX_H))
+            cols   += (f'<div class="bar-col">'
+                       f'<span class="bar-col-val">{cnt}</span>'
+                       f'<div class="bar-col-fill" style="height:{h}px;background:{color}"></div>'
+                       f'</div>')
+            labels += f'<div class="bar-col-label" title="{rname}">{rname}</div>'
+        return (f'<div class="bar-chart-v-wrap">'
+                f'<div class="bar-chart-v">{cols}</div>'
+                f'<div class="bar-chart-v-labels">{labels}</div>'
+                f'</div>')
+
     # ── CSS + nav ──
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
@@ -407,35 +494,25 @@ def get_page_html(form_data):
 <div class="filter-card">
     <div class="filter-row">
 
-        <!-- Region & Country: <details>/<a> links — pure HTML/CSS, zero JavaScript -->
-        <div class="filter-group">
-            <label>Region</label>
-            {sel_region()}
-        </div>
-        <div class="filter-group">
-            <label>Country</label>
-            {sel_country()}
-        </div>
+        <!-- All dropdowns use instant navigation — selecting any option reloads immediately -->
+        <div class="filter-group"><label>Region</label>{sel_region()}</div>
+        <div class="filter-group"><label>Country</label>{sel_country()}</div>
+        <div class="filter-group"><label>Antigen</label>{sel_antigen()}</div>
+        <div class="filter-group"><label>Year</label>{sel_year()}</div>
+        <div class="filter-group"><label>Sort by</label>{sel_sort()}</div>
 
-        <!-- Apply Filters form: tables only update when this is submitted -->
+        <!-- Apply Filters: applies region/country to tables; hidden fields preserve current params -->
         <form method="GET" action="/binh_page_2" style="display:contents">
+            <input type="hidden" name="antigen"         value="{antigen_f}">
+            <input type="hidden" name="year"            value="{year_f}">
+            <input type="hidden" name="sort"            value="{sort_f}">
+            <input type="hidden" name="sort2"           value="{sort2_f}">
             <input type="hidden" name="region"          value="{region_f}">
             <input type="hidden" name="country"         value="{country_f}">
             <input type="hidden" name="applied_region"  value="{region_f}">
             <input type="hidden" name="applied_country" value="{country_f}">
-            <input type="hidden" name="sort2"           value="{sort2_f}">
-            <div class="filter-group">
-                <label>Antigen</label>
-                {sel_antigen()}
-            </div>
-            <div class="filter-group">
-                <label>Year</label>
-                {sel_year()}
-            </div>
-            <div class="filter-group">
-                <label>Sort by</label>
-                {sel_sort()}
-            </div>
+            <input type="hidden" name="t1_view"         value="{t1_view_f}">
+            <input type="hidden" name="t2_view"         value="{t2_view_f}">
             <div class="filter-actions">
                 <button type="submit" class="btn-apply">
                     <img src="/images/filter%20icon.png" alt=""> Apply Filters
@@ -463,12 +540,12 @@ def get_page_html(form_data):
 
     <!-- Table 1: Countries meeting ≥90% target -->
     <div class="table-card">
-        <input type="radio" id="t1-table" name="t1-view" checked class="tab-radio">
-        <input type="radio" id="t1-chart" name="t1-view" class="tab-radio">
+        <input type="radio" id="t1-table" name="t1-view" {'checked' if t1_view_f != 'chart' else ''} class="tab-radio">
+        <input type="radio" id="t1-chart" name="t1-view" {'checked' if t1_view_f == 'chart' else ''} class="tab-radio">
         <div class="tab-bar">
             <div class="tab-btn-group">
-                <label for="t1-table" class="tab-btn t1-table-label"><img src="/images/table%20icon.png" alt=""> Table</label>
-                <label for="t1-chart" class="tab-btn t1-chart-label"><img src="/images/chart%20icon.png" alt=""> Chart</label>
+                <a href="{url(t1_view='table')}" class="tab-btn t1-table-label"><img src="/images/table%20icon.png" alt=""> Table</a>
+                <a href="{url(t1_view='chart')}" class="tab-btn t1-chart-label"><img src="/images/chart%20icon.png" alt=""> Chart</a>
             </div>
         </div>
         <div class="t1-table-panel">
@@ -493,18 +570,18 @@ def get_page_html(form_data):
             {paginate(page1, total_p1, "page1", cnt1)}
         </div>
         <div class="t1-chart-panel">
-            <div class="chart-placeholder">&#9650; Chart view coming soon</div>
+            {chart1_html()}
         </div>
     </div>
 
     <!-- Table 2: Countries meeting ≥90% per region -->
     <div class="table-card">
-        <input type="radio" id="t2-table" name="t2-view" checked class="tab-radio">
-        <input type="radio" id="t2-chart" name="t2-view" class="tab-radio">
+        <input type="radio" id="t2-table" name="t2-view" {'checked' if t2_view_f != 'chart' else ''} class="tab-radio">
+        <input type="radio" id="t2-chart" name="t2-view" {'checked' if t2_view_f == 'chart' else ''} class="tab-radio">
         <div class="tab-bar">
             <div class="tab-btn-group">
-                <label for="t2-table" class="tab-btn t2-table-label"><img src="/images/table%20icon.png" alt=""> Table</label>
-                <label for="t2-chart" class="tab-btn t2-chart-label"><img src="/images/chart%20icon.png" alt=""> Chart</label>
+                <a href="{url(t2_view='table')}" class="tab-btn t2-table-label"><img src="/images/table%20icon.png" alt=""> Table</a>
+                <a href="{url(t2_view='chart')}" class="tab-btn t2-chart-label"><img src="/images/chart%20icon.png" alt=""> Chart</a>
             </div>
         </div>
         <div class="t2-table-panel">
@@ -528,7 +605,7 @@ def get_page_html(form_data):
             {paginate(page2, total_p2, "page2", cnt2)}
         </div>
         <div class="t2-chart-panel">
-            <div class="chart-placeholder">&#9650; Chart view coming soon</div>
+            {chart2_html()}
         </div>
     </div>
 

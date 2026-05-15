@@ -34,6 +34,7 @@ def get_page_html(form_data):
     end_year_f   = _get("end_year",   "2024")
     top_f        = _get("top",        "10")
     sort_f       = _get("sort",       "increase_desc")
+    t3_view_f    = _get("t3_view",    "table")
 
     try: page = max(1, int(_get("page", "1")))
     except: page = 1
@@ -155,23 +156,15 @@ def get_page_html(form_data):
         p["end_year"]    = str(end_y)
         if top_f != "10":    p["top"]        = top_f
         if sort_f != "increase_desc": p["sort"] = sort_f
+        if t3_view_f == "chart": p["t3_view"] = t3_view_f
         p["page"] = str(page)
         p.update(kw)
         qs = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in p.items() if v)
         return f"/binh_page_3?{qs}#results-section" if qs else "/binh_page_3#results-section"
 
-    # ── Cascade year URL builder — for <details> Start/End Year nav links ──
-    # Clicking an option navigates instantly, preserving all other params. No JS.
     def cascade_year_url(start_year, end_year):
-        p = {}
-        if antigen_f:                       p["antigen"]    = antigen_f
-        p["start_year"]                                     = str(start_year)
-        p["end_year"]                                       = str(end_year)
-        if top_f != "10":                   p["top"]        = top_f
-        if sort_f != "increase_desc":       p["sort"]       = sort_f
-        p["page"] = "1"
-        qs = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in p.items() if v)
-        return f"/binh_page_3?{qs}#results-section" if qs else "/binh_page_3#results-section"
+        # Thin wrapper: reuses url() so year nav preserves antigen/top/sort
+        return url(start_year=str(start_year), end_year=str(end_year), page="1")
 
     # ── Filter tags ──
     filter_tags = ""
@@ -183,45 +176,51 @@ def get_page_html(form_data):
 
     # ── Dropdown builders ──
     def sel_antigen():
-        o = '<option value="">All Antigens</option>'
+        label = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), "All Antigens")
+        opts = f'<a href="{url(antigen="", page="1")}" class="{"selected" if not antigen_f else ""}">All Antigens</a>'
         for aid, an in antigen_opts:
-            s = "selected" if aid == antigen_f else ""
-            o += f'<option value="{aid}" {s}>{_antigen_name(an)}</option>'
-        return f'<select name="antigen" class="filter-select">{o}</select>'
+            sc = "selected" if aid == antigen_f else ""
+            opts += f'<a href="{url(antigen=aid, page="1")}" class="{sc}">{_antigen_name(an)}</a>'
+        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{label}</button>'
+                f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_start_year():
         opts = ""
         for (yr,) in start_year_opts:
             sc = "selected" if int(yr) == start_y else ""
             opts += f'<a href="{cascade_year_url(yr, end_y)}" class="{sc}">{yr}</a>'
-        return (f'<details class="custom-select">'
-                f'<summary>{start_y}</summary>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<button type="button" class="custom-select-btn">{start_y}</button>'
                 f'<div class="custom-select-options">{opts}</div>'
-                f'</details>')
+                f'</div>')
 
     def sel_end_year():
         opts = ""
         for (yr,) in end_year_opts:
             sc = "selected" if int(yr) == end_y else ""
             opts += f'<a href="{cascade_year_url(start_y, yr)}" class="{sc}">{yr}</a>'
-        return (f'<details class="custom-select">'
-                f'<summary>{end_y}</summary>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<button type="button" class="custom-select-btn">{end_y}</button>'
                 f'<div class="custom-select-options">{opts}</div>'
-                f'</details>')
+                f'</div>')
 
     def sel_top():
-        o = ""
-        for val, label in TOP_OPTS:
-            s = "selected" if val == top_f else ""
-            o += f'<option value="{val}" {s}>{label}</option>'
-        return f'<select name="top" class="filter-select">{o}</select>'
+        cur_label = next((lbl for val, lbl in TOP_OPTS if val == top_f), "Top 10")
+        opts = ""
+        for val, lbl in TOP_OPTS:
+            sc = "selected" if val == top_f else ""
+            opts += f'<a href="{url(top=val, page="1")}" class="{sc}">{lbl}</a>'
+        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{cur_label}</button>'
+                f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_sort():
-        o = ""
-        for val, label in SORT_LABELS.items():
-            s = "selected" if val == sort_f else ""
-            o += f'<option value="{val}" {s}>{label}</option>'
-        return f'<select name="sort" class="filter-select">{o}</select>'
+        cur_label = SORT_LABELS.get(sort_f, "Highest Increase")
+        opts = ""
+        for val, lbl in SORT_LABELS.items():
+            sc = "selected" if val == sort_f else ""
+            opts += f'<a href="{url(sort=val, page="1")}" class="{sc}">{lbl}</a>'
+        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{cur_label}</button>'
+                f'<div class="custom-select-options">{opts}</div></div>')
 
     # ── Table rows ──
     def rows_html():
@@ -313,6 +312,35 @@ def get_page_html(form_data):
 
     export_href = _xls_export()
 
+    # ── Chart helper ──
+
+    def chart3_html():
+        title = '<div class="table-header-row"><span class="table-title">VACCINATION RATE CHANGE BY COUNTRY</span></div>'
+        if len(top_rows) < 2:
+            return title + '<div class="chart-msg">Not enough data — need at least 2 countries to display a chart</div>'
+        sorted_rows = sorted(top_rows, key=lambda r: r[4] if r[4] is not None else 0, reverse=True)
+        max_abs = max(abs(r[4] or 0) for r in sorted_rows) or 1
+        out = ""
+        for i, (cname, rname, start_r, end_r, delta) in enumerate(sorted_rows):
+            d = delta or 0
+            w = round(abs(d) / max_abs * 100, 1)
+            if d > 0:
+                fill_cls, sign = "bar-fill-green", "+"
+            elif d < 0:
+                fill_cls, sign = "bar-fill-red", ""
+            else:
+                fill_cls, sign = "bar-fill-gray", ""
+            out += (f'<div class="bar-row">'
+                    f'<span class="bar-rank">{i+1}</span>'
+                    f'<span class="bar-label" title="{cname}">{cname}</span>'
+                    f'<div class="bar-track"><div class="{fill_cls}" style="width:{w}%"></div></div>'
+                    f'<span class="bar-val">{sign}{d}%</span>'
+                    f'</div>')
+        inner = f'<div class="bar-chart-h">{out}</div>'
+        if top_n >= 20:
+            inner = f'<div class="bar-chart-scroll">{inner}</div>'
+        return title + inner
+
     # ── CSS + nav ──
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
@@ -341,17 +369,21 @@ def get_page_html(form_data):
 <div class="filter-card">
     <div class="filter-row">
 
-        <!-- Start Year & End Year: <details>/<a> links — pure HTML/CSS cascade, no JavaScript -->
+        <!-- All dropdowns use instant navigation — selecting any option reloads immediately -->
         <div class="filter-group"><label>Start Year</label>{sel_start_year()}</div>
         <div class="filter-group"><label>End Year</label>{sel_end_year()}</div>
+        <div class="filter-group"><label>Antigen</label>{sel_antigen()}</div>
+        <div class="filter-group"><label>Top</label>{sel_top()}</div>
+        <div class="filter-group"><label>Sort by</label>{sel_sort()}</div>
 
-        <!-- Apply Filters form: pass current year selection as hidden fields -->
+        <!-- Apply Filters: hidden fields preserve current params when submitted -->
         <form method="GET" action="/binh_page_3" style="display:contents">
+            <input type="hidden" name="antigen"    value="{antigen_f}">
             <input type="hidden" name="start_year" value="{start_y}">
             <input type="hidden" name="end_year"   value="{end_y}">
-            <div class="filter-group"><label>Antigen</label>{sel_antigen()}</div>
-            <div class="filter-group"><label>Top</label>{sel_top()}</div>
-            <div class="filter-group"><label>Sort by</label>{sel_sort()}</div>
+            <input type="hidden" name="top"        value="{top_f}">
+            <input type="hidden" name="sort"       value="{sort_f}">
+            <input type="hidden" name="t3_view"    value="{t3_view_f}">
             <div class="filter-actions">
                 <button type="submit" class="btn-apply">
                     <img src="/images/filter%20icon.png" alt=""> Apply Filters
@@ -377,16 +409,16 @@ def get_page_html(form_data):
 
 <div class="single-table-wrap">
     <div class="table-card">
-        <input type="radio" id="t3-table" name="t3-view" checked class="tab-radio">
-        <input type="radio" id="t3-chart" name="t3-view"         class="tab-radio">
+        <input type="radio" id="t3-table" name="t3-view" {'checked' if t3_view_f != 'chart' else ''} class="tab-radio">
+        <input type="radio" id="t3-chart" name="t3-view" {'checked' if t3_view_f == 'chart' else ''} class="tab-radio">
         <div class="tab-bar">
             <div class="tab-btn-group">
-                <label for="t3-table" class="tab-btn t3-table-label">
+                <a href="{url(t3_view='table')}" class="tab-btn t3-table-label">
                     <img src="/images/table%20icon.png" alt=""> Table
-                </label>
-                <label for="t3-chart" class="tab-btn t3-chart-label">
+                </a>
+                <a href="{url(t3_view='chart')}" class="tab-btn t3-chart-label">
                     <img src="/images/chart%20icon.png" alt=""> Chart
-                </label>
+                </a>
             </div>
         </div>
 
@@ -414,7 +446,7 @@ def get_page_html(form_data):
         </div>
 
         <div class="t3-chart-panel">
-            <div class="chart-placeholder">&#9650; Chart view coming soon</div>
+            {chart3_html()}
         </div>
     </div>
 </div>

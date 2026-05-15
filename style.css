@@ -771,29 +771,21 @@ a {
 }
 .filter-select:focus { border-color: #1a7cd4; outline: none; }
 
-/* Custom <details>/<summary> dropdown — mirrors .filter-select exactly */
+/* Custom dropdown — :focus-within auto-closes on outside click (no JavaScript needed) */
 .custom-select { position: relative; display: block; }
-.custom-select summary {
-    display: block;
-    border: 1.5px solid #d0d4da;
-    border-radius: 8px;
-    padding: 8px 28px 8px 10px;
-    font-size: 13px;
-    color: #333;
+.custom-select-btn {
+    display: block; width: 100%;
+    border: 1.5px solid #d0d4da; border-radius: 8px;
+    padding: 8px 28px 8px 10px; font-size: 13px; color: #333;
     background: #fff url("/images/dropdown%20icon.png") no-repeat right 10px center;
     background-size: 16px auto;
-    cursor: pointer;
-    list-style: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    cursor: pointer; font-family: inherit; text-align: left;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     user-select: none;
 }
-.custom-select summary::-webkit-details-marker { display: none; }
-.custom-select summary::marker { content: none; }
-.custom-select[open] summary {
-    border-color: #1a7cd4;
-}
+.custom-select-btn:focus { outline: none; border-color: #1a7cd4; }
+.css-dropdown .custom-select-options { display: none; }
+.css-dropdown:focus-within .custom-select-options { display: block; }
 .custom-select-options {
     position: absolute;
     top: 100%; left: 0; right: 0;
@@ -1008,6 +1000,60 @@ a {
 /* ── Chart placeholder ── */
 .chart-placeholder {
     padding: 64px 20px; text-align: center; color: #bbb; font-size: 14px;
+}
+
+/* ══════════════════════════════
+   BAR CHARTS
+══════════════════════════════ */
+
+/* Empty / warning message inside chart panel */
+.chart-msg {
+    padding: 48px 20px; text-align: center; color: #888; font-size: 14px;
+    background: #f9fafb; border-radius: 8px; margin: 16px 20px;
+}
+
+/* ── Horizontal bar (Table 1, Level 3) ── */
+.bar-chart-h { padding: 16px 20px; }
+.bar-chart-h .bar-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+}
+.bar-chart-h .bar-rank  { min-width: 20px; font-size: 11px; color: #aaa; text-align: right; }
+.bar-chart-h .bar-label {
+    min-width: 130px; max-width: 130px; font-size: 12px; color: #333;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right;
+}
+.bar-chart-h .bar-track {
+    flex: 1; background: #eef1f5; border-radius: 4px; height: 20px; overflow: hidden;
+}
+.bar-chart-h .bar-fill-blue  { height:100%; background:#2980b9; border-radius:4px; min-width:2px; }
+.bar-chart-h .bar-fill-green { height:100%; background:#27ae60; border-radius:4px; min-width:2px; }
+.bar-chart-h .bar-fill-red   { height:100%; background:#e74c3c; border-radius:4px; min-width:2px; }
+.bar-chart-h .bar-fill-gray  { height:100%; background:#bbb;    border-radius:4px; min-width:2px; }
+.bar-chart-h .bar-val { min-width: 52px; font-size: 12px; font-weight: 600; color: #555; }
+
+/* Scroll wrapper — used when Top N >= 20 */
+.bar-chart-scroll { max-height: 420px; overflow-y: auto; overflow-x: hidden; padding-right: 4px; }
+.bar-chart-scroll::-webkit-scrollbar       { width: 6px; }
+.bar-chart-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+.bar-chart-scroll::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+/* ── Vertical bar (Table 2 — Region summary) ── */
+.bar-chart-v-wrap { padding: 16px 20px 8px; }
+.bar-chart-v {
+    display: flex; align-items: flex-end; gap: 12px; height: 200px;
+}
+.bar-chart-v .bar-col {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: flex-end; flex: 1; min-width: 50px; height: 100%;
+}
+.bar-chart-v .bar-col-val  { font-size: 12px; font-weight: 700; color: #333; margin-bottom: 4px; }
+.bar-chart-v .bar-col-fill { width: 80%; border-radius: 4px 4px 0 0; min-height: 4px; }
+.bar-chart-v-labels {
+    display: flex; gap: 12px; padding: 6px 20px 0;
+}
+.bar-chart-v-labels .bar-col-label {
+    flex: 1; min-width: 50px; font-size: 10px; text-align: center;
+    color: #666; word-break: break-word; line-height: 1.3;
 }
 
 /* ── Single full-width table (level 3) ── */
