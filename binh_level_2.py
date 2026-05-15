@@ -42,7 +42,6 @@ def get_page_html(form_data):
     sort2_f   = _get("sort2", "countries_desc")
     t1_view_f = _get("t1_view", "table")
     t2_view_f = _get("t2_view", "table")
-    lang_f    = _get("lang",    "en")
 
     try: page1 = max(1, int(_get("page1", "1")))
     except: page1 = 1
@@ -248,7 +247,6 @@ def get_page_html(form_data):
         if sort2_f and sort2_f != "countries_desc": p["sort2"] = sort2_f
         if t1_view_f == "chart": p["t1_view"] = t1_view_f
         if t2_view_f == "chart": p["t2_view"] = t2_view_f
-        if lang_f and lang_f != "en": p["lang"] = lang_f
         p["page1"] = "1"
         p["page2"] = "1"
         qs = "&".join(f"{k}={v}" for k, v in p.items() if v)
@@ -267,7 +265,6 @@ def get_page_html(form_data):
         if sort2_f and sort2_f != "countries_desc": p["sort2"] = sort2_f
         if t1_view_f == "chart": p["t1_view"] = t1_view_f
         if t2_view_f == "chart": p["t2_view"] = t2_view_f
-        if lang_f and lang_f != "en": p["lang"] = lang_f
         p["page1"] = str(page1)
         p["page2"] = str(page2)
         p.update(kw)
@@ -318,7 +315,7 @@ def get_page_html(form_data):
             rn = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), "All Regions")
             return f'<div class="custom-select-locked">{rn}</div>'
         label = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), "All Regions")
-        opts = f'<a href="{cascade_url()}" class="{"selected" if not region_f else ""}">{nav.t("All Regions", lang_f)}</a>'
+        opts = f'<a href="{cascade_url()}" class="{"selected" if not region_f else ""}">All Regions</a>'
         for rid, rn in region_opts:
             sc = "selected" if str(rid) == str(region_f) else ""
             opts += f'<a href="{cascade_url(region=str(rid))}" class="{sc}">{rn.replace("&","&amp;")}</a>'
