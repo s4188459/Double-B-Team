@@ -198,8 +198,8 @@ def get_page_html(form_data):
         for val, lbl in TOP_OPTS:
             sc = "selected" if val == top_f else ""
             opts += f'<a href="{url(top=val, page="1")}" class="{sc}">{lbl}</a>'
-        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{cur_label}</button>'
-                f'<div class="custom-select-options">{opts}</div></div>')
+        return (f'<details class="custom-select css-dropdown"><summary class="custom-select-btn">{cur_label}</summary>'
+                f'<div class="custom-select-options">{opts}</div></details>')
 
     def sel_sort():
         cur_label = SORT_LABELS.get(sort_f, "Highest Increase")
@@ -207,8 +207,8 @@ def get_page_html(form_data):
         for val, lbl in SORT_LABELS.items():
             sc = "selected" if val == sort_f else ""
             opts += f'<a href="{url(sort=val, page="1")}" class="{sc}">{lbl}</a>'
-        return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{cur_label}</button>'
-                f'<div class="custom-select-options">{opts}</div></div>')
+        return (f'<details class="custom-select css-dropdown"><summary class="custom-select-btn">{cur_label}</summary>'
+                f'<div class="custom-select-options">{opts}</div></details>')
 
     def rows_html():
         if not rows:

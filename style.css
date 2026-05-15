@@ -771,19 +771,31 @@ a {
 }
 .filter-select:focus { border-color: #1a7cd4; outline: none; }
 
-/* Custom dropdown — :focus-within auto-closes on outside click (no JavaScript needed) */
+/* Custom dropdown — :focus-within opens/closes, closes on outside click, no JavaScript needed */
 .custom-select { position: relative; display: block; }
 .custom-select-btn {
     display: block; width: 100%;
     border: 1.5px solid #d0d4da; border-radius: 8px;
     padding: 8px 28px 8px 10px; font-size: 13px; color: #333;
-    background: #fff url("/images/dropdown%20icon.png") no-repeat right 10px center;
-    background-size: 16px auto;
+    background: #fff;
     cursor: pointer; font-family: inherit; text-align: left;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     user-select: none;
+    position: relative;
 }
 .custom-select-btn:focus { outline: none; border-color: #1a7cd4; }
+.custom-select-btn::after {
+    content: '';
+    position: absolute;
+    right: 8px; top: 50%;
+    transform: translateY(-50%);
+    width: 16px; height: 16px;
+    background: url("/images/dropdown%20icon.png") no-repeat center;
+    background-size: 16px auto;
+    transition: transform 0.25s;
+    pointer-events: none;
+}
+.css-dropdown:focus-within .custom-select-btn::after { transform: translateY(-50%) rotate(180deg); }
 .css-dropdown .custom-select-options { display: none; }
 .css-dropdown:focus-within .custom-select-options { display: block; }
 .custom-select-options {
