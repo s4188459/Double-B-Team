@@ -6,17 +6,21 @@ import nav
 
 ROWS_PER_PAGE = 10
 
+# basic SQL escaping to prevent injection in filter queries
 def _esc(s):
     return str(s).replace("'", "''")
 
+# trims DB antigen names down to a short display label
 def _antigen_name(full_name):
     n = full_name.split(",")[0]
     return re.sub(r'-containing vaccine', '', n, flags=re.IGNORECASE).strip()
 
+# CSS class for coverage badge coloring
 def _cov_class(v):
     if v is None: return "cov-mid"
     return "cov-high" if v >= 90 else ("cov-mid" if v >= 70 else "cov-low")
 
+# CSS class for the improvement delta badge: green positive, red negative, gray zero
 def _delta_class(v):
     if v is None: return "delta-zero"
     if v > 0:  return "delta-pos"
@@ -46,24 +50,22 @@ def get_page_html(form_data):
     year_opts = pyhtml.get_results_from_query(db,
         "SELECT DISTINCT year FROM Vaccination ORDER BY year DESC")
 
-    # Parse + validate years
     try: start_y = int(start_year_f)
     except: start_y = 2000
     try: end_y = int(end_year_f)
     except: end_y = 2024
+    # swap if someone manually typed end < start in the URL
     if end_y < start_y:
-        start_y, end_y = end_y, start_y  # swap silently (safety net for URL tampering)
+        start_y, end_y = end_y, start_y
 
-    # Cascade: each dropdown only shows valid choices relative to the other
-    start_year_opts = [(yr,) for (yr,) in year_opts if int(yr) <= end_y]   # Start ≤ End
-    end_year_opts   = [(yr,) for (yr,) in year_opts if int(yr) >= start_y] # End ≥ Start
+    # each year dropdown only shows values valid relative to the other — prevents impossible ranges
+    start_year_opts = [(yr,) for (yr,) in year_opts if int(yr) <= end_y]
+    end_year_opts   = [(yr,) for (yr,) in year_opts if int(yr) >= start_y]
 
-    # Top N
     TOP_OPTS = [("5","Top 5"), ("10","Top 10"), ("20","Top 20"), ("50","Top 50"), ("100","Top 100")]
     TOP_MAP  = {v: int(v) for v, _ in TOP_OPTS}
     top_n    = TOP_MAP.get(top_f, 10)
 
-    # Sort options
     SORT_MAP = {
         "increase_desc":  "(e.coverage - s.coverage) DESC",
         "increase_asc":   "(e.coverage - s.coverage) ASC",
@@ -90,24 +92,12 @@ def get_page_html(form_data):
     }
     order_expr = SORT_MAP.get(sort_f, "(e.coverage - s.coverage) DESC")
 
-    # Antigen WHERE condition (optional — applied inside both subqueries)
     a_cond = f"AND antigen = '{_esc(antigen_f)}'" if antigen_f else ""
 
-    # ══════════════════════════════════════════════════════════════════
-    # Core SQL: two subquery JOINs (start year + end year dataset).
-    # INNER JOIN guarantees BOTH years must have real data for the country.
-    # typeof='real' excludes 5415 rows where missing data is stored as '' not NULL.
-    # AVG+GROUP BY collapses to 1 row per country — prevents cross-product
-    # duplicates when no antigen is selected (N antigens × M antigens = N×M rows).
-    # When antigen IS selected: one row per country → AVG = that single value.
-    # All sorting and limiting done in SQL — no Python post-processing.
-    # ══════════════════════════════════════════════════════════════════
+    # builds a subquery for a single year: rate = doses / population × 100
+    # AVG + GROUP BY prevents cross-product duplicates when no antigen filter is set
+    # typeof='real' skips rows where doses is stored as '' instead of NULL
     def _sub(yr):
-        # Vaccination rate = doses / total country population × 100
-        # JOIN CountryPopulation to get total population for that year.
-        # AVG + GROUP BY collapses to 1 row per country (prevents cross-product
-        # duplicates when multiple antigens exist and no antigen filter is set).
-        # typeof='real' excludes rows where doses is stored as '' not NULL.
         return f"""(
             SELECT v.country,
                    AVG(v.doses / p.population * 100) AS coverage
@@ -131,24 +121,24 @@ def get_page_html(form_data):
         ROUND(e.coverage, 2)                        AS end_rate,
         ROUND(e.coverage - s.coverage, 2)           AS increase"""
 
-    # Total matching countries (for results bar)
+    # total count for the results bar — no Top N limit here
     n_total = pyhtml.get_results_from_query(db,
         f"SELECT COUNT(*) {join_sql}")[0][0]
 
-    # Top N rows (sorted, limited — all in SQL)
+    # sorted and limited to Top N in SQL — no Python post-processing
     top_rows = pyhtml.get_results_from_query(db, f"""
         SELECT {select_cols}
         {join_sql}
         ORDER BY {order_expr}
         LIMIT {top_n}""")
 
-    # Paginate within the already-limited top_rows
+    # paginate within the already-limited top_rows slice
     cnt         = len(top_rows)
     total_pages = max(1, -(-cnt // ROWS_PER_PAGE))
     page        = min(page, total_pages)
     rows        = top_rows[(page-1)*ROWS_PER_PAGE : page*ROWS_PER_PAGE]
 
-    # ── URL builder ──
+    # URL builder — carries all current params forward, overriding with kw
     def url(**kw):
         p = {}
         if antigen_f:        p["antigen"]    = antigen_f
@@ -162,11 +152,10 @@ def get_page_html(form_data):
         qs = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in p.items() if v)
         return f"/binh_page_3?{qs}#results-section" if qs else "/binh_page_3#results-section"
 
+    # thin wrapper so year dropdown links preserve antigen/top/sort state
     def cascade_year_url(start_year, end_year):
-        # Thin wrapper: reuses url() so year nav preserves antigen/top/sort
         return url(start_year=str(start_year), end_year=str(end_year), page="1")
 
-    # ── Filter tags ──
     filter_tags = ""
     if antigen_f:
         nm = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), antigen_f)
@@ -174,7 +163,6 @@ def get_page_html(form_data):
     filter_tags += f'<span class="filter-tag">{start_y} → {end_y}</span> '
     filter_tags += f'<span class="filter-tag">Top {top_n}</span> '
 
-    # ── Dropdown builders ──
     def sel_antigen():
         label = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), "All Antigens")
         opts = f'<a href="{url(antigen="", page="1")}" class="{"selected" if not antigen_f else ""}">All Antigens</a>'
@@ -222,7 +210,6 @@ def get_page_html(form_data):
         return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{cur_label}</button>'
                 f'<div class="custom-select-options">{opts}</div></div>')
 
-    # ── Table rows ──
     def rows_html():
         if not rows:
             return '<tr><td colspan="6" class="no-data">No countries found — check that both years have population and vaccination data.</td></tr>'
@@ -246,7 +233,7 @@ def get_page_html(form_data):
                     f"</tr>")
         return out
 
-    # ── Pagination ──
+    # renders prev/next + numbered page links with ellipsis for large page counts
     def paginate():
         if total_pages <= 1:
             return ""
@@ -280,9 +267,9 @@ def get_page_html(form_data):
             <div class="pagination-btns">{first}{prev}{"".join(mid)}{nxt}{last}</div>
         </div>"""
 
-    # ── Sortable headers ──
     _SIMG = '<img src="/images/order%20icon.png" class="sort-icon-img" alt="">'
 
+    # sortable column header — toggles asc/desc and links back with the new sort key
     def th(label, asc_key, desc_key):
         is_asc = sort_f == asc_key
         next_k = desc_key if is_asc else asc_key
@@ -291,7 +278,7 @@ def get_page_html(form_data):
                 f'<a href="{url(sort=next_k, page="1")}" class="sort-link">'
                 f'{label} {_SIMG}</a></th>')
 
-    # ── Excel export (all top_rows, not just current page) ──
+    # exports all top_rows (not just the current page) as an Excel-compatible data: URI
     def _xls_export():
         def esc(v):
             s = str(v if v is not None else "")
@@ -312,8 +299,7 @@ def get_page_html(form_data):
 
     export_href = _xls_export()
 
-    # ── Chart helper ──
-
+    # horizontal bar chart — green for improvement, red for decline, scrollable when Top ≥ 20
     def chart3_html():
         title = '<div class="table-header-row"><span class="table-title">VACCINATION RATE CHANGE BY COUNTRY</span></div>'
         if len(top_rows) < 2:
@@ -341,7 +327,6 @@ def get_page_html(form_data):
             inner = f'<div class="bar-chart-scroll">{inner}</div>'
         return title + inner
 
-    # ── CSS + nav ──
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
         css = f.read()

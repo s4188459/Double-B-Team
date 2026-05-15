@@ -7,15 +7,18 @@ import nav
 ROWS_PER_PAGE = 10
 
 
+# basic SQL escaping to prevent injection in filter queries
 def _esc(s):
     return str(s).replace("'", "''")
 
 
+# trims DB antigen names down to a short display label
 def _antigen_name(full_name):
     n = full_name.split(",")[0]
     return re.sub(r'-containing vaccine', '', n, flags=re.IGNORECASE).strip()
 
 
+# returns CSS class for coverage badge coloring: green ≥90%, yellow ≥70%, red below
 def _cov_class(v):
     if v is None: return "cov-mid"
     return "cov-high" if v >= 90 else ("cov-mid" if v >= 70 else "cov-low")
@@ -26,16 +29,14 @@ def get_page_html(form_data):
         v = form_data.get(key)
         return (v[0] if v else default).strip()
 
-    # ── UI state params: control dropdown display & cascade logic only ──
+    # region/country only control the dropdown UI and cascade — tables ignore them until Apply is clicked
     region_f  = _get("region")
     country_f = _get("country")
 
-    # ── Applied params: control what the tables actually query ──
-    # These only change when the user clicks "Apply Filters"
+    # these are what the tables actually filter on — only update when user hits Apply Filters
     applied_region_f  = _get("applied_region")
     applied_country_f = _get("applied_country")
 
-    # ── Filter params: applied immediately (in the Apply Filters form) ──
     antigen_f = _get("antigen")
     year_f    = _get("year")
     sort_f    = _get("sort",  "coverage_desc")
@@ -54,14 +55,14 @@ def get_page_html(form_data):
     year_opts    = pyhtml.get_results_from_query(db, "SELECT DISTINCT year FROM Vaccination ORDER BY year DESC")
     region_opts  = pyhtml.get_results_from_query(db, "SELECT RegionID, region FROM Region ORDER BY region")
 
-    # ── Cascade: auto-derive region from selected country ──
+    # if a country is selected, look up its region so the region dropdown stays in sync
     if country_f:
         _r = pyhtml.get_results_from_query(db,
             f"SELECT region FROM Country WHERE CountryID = '{_esc(country_f)}'")
         if _r:
             region_f = str(_r[0][0])
 
-    # ── Cascade: limit country list to selected region ──
+    # narrow the country list to whichever region is selected
     if region_f:
         country_opts = pyhtml.get_results_from_query(db,
             f"SELECT CountryID, name FROM Country WHERE region = '{_esc(region_f)}' ORDER BY name")
@@ -69,9 +70,9 @@ def get_page_html(form_data):
         country_opts = pyhtml.get_results_from_query(db,
             "SELECT CountryID, name FROM Country ORDER BY name")
 
-    # ── WHERE conditions for tables — use applied_* NOT region_f/country_f ──
+    # WHERE clause builder for Table 1 — always use applied_* not region_f/country_f
     def base_conds():
-        # TYPEOF = 'real' excludes rows where coverage stored as empty string TEXT
+        # typeof='real' skips rows where missing coverage is stored as empty string rather than NULL
         c = ["TYPEOF(v.coverage) = 'real'"]
         if antigen_f:                  c.append(f"v.antigen = '{_esc(antigen_f)}'")
         if year_f and year_f.isdigit():c.append(f"v.year = {int(year_f)}")
@@ -81,11 +82,12 @@ def get_page_html(form_data):
 
     where_base = "WHERE " + base_conds()
 
+    # WHERE clause builder for Table 2 — derives region from applied_country when no region is set
     def base_conds_t2():
         c = ["TYPEOF(v.coverage) = 'real'"]
         if antigen_f:                  c.append(f"v.antigen = '{_esc(antigen_f)}'")
         if year_f and year_f.isdigit():c.append(f"v.year = {int(year_f)}")
-        # Use applied_region directly, or derive from applied_country if region not set
+        # fall back to deriving region from applied_country if applied_region isn't set directly
         t2_region = applied_region_f
         if not t2_region and applied_country_f:
             _r = pyhtml.get_results_from_query(db,
@@ -140,10 +142,7 @@ def get_page_html(form_data):
     }
     order_by2 = SORT2_MAP.get(sort2_f, "countries_met DESC")
 
-    # ══════════════════════════════════════════════════════════════════
-    # TABLE 1: Countries meeting ≥90% vaccination target
-    # Duplicates handled with GROUP BY + AVG(coverage)
-    # ══════════════════════════════════════════════════════════════════
+    # Table 1: countries that hit ≥90% coverage — GROUP BY + AVG handles duplicate rows
     t1_inner = f"""
         SELECT a.AntigenID, v.year, c.name AS country_name,
                r.region   AS region_name,
@@ -165,9 +164,7 @@ def get_page_html(form_data):
         ORDER BY {order_by}
         LIMIT {ROWS_PER_PAGE} OFFSET {(page1-1)*ROWS_PER_PAGE}""")
 
-    # ══════════════════════════════════════════════════════════════════
-    # TABLE 2: Per region — how many countries met ≥90%
-    # ══════════════════════════════════════════════════════════════════
+    # Table 2: per region — counts how many countries met ≥90% for the selected filters
     t2_inner = f"""
         SELECT a.AntigenID, sub.year, r.region AS region_name,
                COUNT(*) AS countries_met
@@ -191,10 +188,11 @@ def get_page_html(form_data):
         ORDER BY {order_by2}
         LIMIT {ROWS_PER_PAGE} OFFSET {(page2-1)*ROWS_PER_PAGE}""")
 
-    # ── Export: all filtered rows (no pagination) ──
+    # pull all filtered rows (no pagination limit) for the Excel export
     _exp1 = pyhtml.get_results_from_query(db, f"{t1_inner} ORDER BY {order_by}")
     _exp2 = pyhtml.get_results_from_query(db, f"{t2_inner} ORDER BY {order_by2}")
 
+    # wraps rows in an Excel-compatible HTML table encoded as a data: URI
     def _xls_export(headers, rows):
         def esc(v):
             s = str(v if v is not None else "")
@@ -209,13 +207,13 @@ def get_page_html(form_data):
     export1_href = _xls_export(["Antigen", "Year", "Country", "Region", "% of Target"], _exp1)
     export2_href = _xls_export(["Antigen", "Year", "Region", "Countries Met >=90%"], _exp2)
 
-    # ── Chart data — only fetched when Year is selected ──
+    # chart data only makes sense when a year is chosen — otherwise skip the queries
     if year_f and year_f.isdigit():
-        # Table 1 chart: all countries by current sort order
+        # all countries for Chart 1 (no pagination limit)
         chart1_rows = pyhtml.get_results_from_query(db, f"""
             {t1_inner}
             ORDER BY {order_by}""")
-        # Table 2 chart: distinct countries per region meeting >=90%
+        # distinct countries per region for Chart 2
         chart2_rows = pyhtml.get_results_from_query(db, f"""
             SELECT r.region, COUNT(DISTINCT sub.country) AS countries_met
             FROM (
@@ -233,8 +231,7 @@ def get_page_html(form_data):
         chart1_rows = []
         chart2_rows = []
 
-    # ── Cascade URL builder — used by <details> region/country nav links ──
-    # Each <a> in the dropdown navigates to a new URL → instant page reload, no JS.
+    # URL for region/country dropdown links — each option is a real <a> that reloads the page (no JS needed)
     def cascade_url(region="", country=""):
         p = {}
         if antigen_f:         p["antigen"]         = antigen_f
@@ -252,7 +249,7 @@ def get_page_html(form_data):
         qs = "&".join(f"{k}={v}" for k, v in p.items() if v)
         return f"/binh_page_2?{qs}" if qs else "/binh_page_2"
 
-    # ── URL builder — preserves all 8 filter params (including applied_*) ──
+    # general URL builder — carries all current filter params forward, overriding with kw
     def url(**kw):
         p = {}
         if antigen_f:         p["antigen"]         = antigen_f
@@ -271,7 +268,7 @@ def get_page_html(form_data):
         qs = "&".join(f"{k}={v}" for k, v in p.items() if v)
         return f"/binh_page_2?{qs}" if qs else "/binh_page_2"
 
-    # ── Filter tags — reflect what's actually in the tables (applied_*) ──
+    # filter tags shown in the results bar — reflect applied_* not the dropdown UI state
     filter_tags = ""
     if antigen_f:
         nm = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), antigen_f)
@@ -288,8 +285,6 @@ def get_page_html(form_data):
         filter_tags += f'<span class="filter-tag">{cn}</span> '
     if not filter_tags:
         filter_tags = '<span style="color:#777;font-size:13px">All data</span> '
-
-    # ── Dropdown builders ──
 
     def sel_antigen():
         label = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), "All Antigens")
@@ -310,7 +305,7 @@ def get_page_html(form_data):
                 f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_region():
-        # When a country is selected, region is auto-derived and locked (no interaction)
+        # region is locked to read-only when a country is already chosen
         if country_f:
             rn = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), "All Regions")
             return f'<div class="custom-select-locked">{rn}</div>'
@@ -326,7 +321,7 @@ def get_page_html(form_data):
 
     def sel_country():
         label = next((cn for cid, cn in country_opts if cid == country_f), "All Countries")
-        # "All Countries" clears country but keeps current region for cascade
+        # "All Countries" clears the country but keeps the region so the list doesn't reset
         opts = f'<a href="{cascade_url(region=region_f)}" class="{"selected" if not country_f else ""}">All Countries</a>'
         for cid, cn in country_opts:
             sc = "selected" if cid == country_f else ""
@@ -345,8 +340,6 @@ def get_page_html(form_data):
         return (f'<div class="custom-select css-dropdown"><button type="button" class="custom-select-btn">{label}</button>'
                 f'<div class="custom-select-options">{opts}</div></div>')
 
-    # ── Table row builders ──
-
     def rows1_html():
         if not rows1:
             return '<tr><td colspan="5" class="no-data">No countries found for the selected filters</td></tr>'
@@ -364,8 +357,7 @@ def get_page_html(form_data):
             out += f"<tr><td>{aid}</td><td>{yr}</td><td><strong>{cnt}</strong></td><td>{rname}</td></tr>"
         return out
 
-    # ── Pagination ──
-
+    # renders prev/next + numbered page links, with ellipsis for long ranges
     def paginate(cur, total, key, total_cnt):
         shown = {1, total, cur}
         if cur > 1:     shown.add(cur - 1)
@@ -396,9 +388,9 @@ def get_page_html(form_data):
             <div class="pagination-btns">{prev_btn}{"".join(mid)}{next_btn}</div>
         </div>"""
 
-    # ── Sortable column header builders ──
     _SIMG = '<img src="/images/order%20icon.png" class="sort-icon-img" alt="">'
 
+    # Table 1 sortable header — toggles between asc/desc and links back with the new sort key
     def th1(label, asc_key, desc_key):
         is_asc = sort_f == asc_key
         next_k = desc_key if is_asc else asc_key
@@ -407,6 +399,7 @@ def get_page_html(form_data):
                 f'<a href="{url(sort=next_k, page1="1")}" class="sort-link">'
                 f'{label} {_SIMG}</a></th>')
 
+    # same as th1 but links against sort2 for Table 2
     def th2(label, asc_key, desc_key):
         is_asc = sort2_f == asc_key
         next_k = desc_key if is_asc else asc_key
@@ -415,11 +408,11 @@ def get_page_html(form_data):
                 f'<a href="{url(sort2=next_k, page2="1")}" class="sort-link">'
                 f'{label} {_SIMG}</a></th>')
 
-    # ── Chart helpers ──
-
+    # one color per region for Chart 2 bars
     _REGION_COLORS = ["#2980b9", "#27ae60", "#e67e22", "#9b59b6",
                       "#e74c3c", "#1abc9c", "#f39c12", "#16a085"]
 
+    # horizontal bar chart — shows all countries meeting ≥90%, scrollable if more than 15
     def chart1_html():
         title = '<div class="table-header-row"><span class="table-title">COUNTRIES BY VACCINATION COVERAGE (≥90%)</span></div>'
         if not year_f:
@@ -441,6 +434,7 @@ def get_page_html(form_data):
             inner = f'<div class="bar-chart-scroll">{inner}</div>'
         return title + inner
 
+    # vertical bar chart — one bar per region, height = number of countries that met the target
     def chart2_html():
         title = '<div class="table-header-row"><span class="table-title">COUNTRIES MEETING ≥90% BY REGION</span></div>'
         if not year_f:
@@ -463,7 +457,6 @@ def get_page_html(form_data):
                 f'<div class="bar-chart-v-labels">{labels}</div>'
                 f'</div>')
 
-    # ── CSS + nav ──
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
         css = f.read()

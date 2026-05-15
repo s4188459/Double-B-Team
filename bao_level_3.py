@@ -2,6 +2,7 @@ import os
 import pyhtml
 import nav
 
+# Infection Improvement by Economic Status Explorer page (placeholder)
 def get_page_html(form_data):
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
