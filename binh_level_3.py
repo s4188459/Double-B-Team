@@ -227,8 +227,11 @@ def get_page_html(form_data):
         for val, lbl in TOP_OPTS:
             sc = "selected" if val == top_f else ""
             opts += f'<a href="{url(top=val, page="1")}" class="{sc}">{lbl}</a>'
-        return (f'<details class="custom-select css-dropdown"><summary class="custom-select-btn">{cur_label}</summary>'
-                f'<div class="custom-select-options">{opts}</div></details>')
+        return (f'<div class="custom-select css-dropdown">'
+                f'<input type="checkbox" id="dd-top" class="dd-toggle">'
+                f'<label for="dd-top" class="dd-backdrop"></label>'
+                f'<label for="dd-top" class="custom-select-btn">{cur_label}</label>'
+                f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_sort():
         cur_label = SORT_LABELS.get(sort_f, "Highest Increase")
@@ -236,8 +239,11 @@ def get_page_html(form_data):
         for val, lbl in SORT_LABELS.items():
             sc = "selected" if val == sort_f else ""
             opts += f'<a href="{url(sort=val, page="1")}" class="{sc}">{lbl}</a>'
-        return (f'<details class="custom-select css-dropdown"><summary class="custom-select-btn">{cur_label}</summary>'
-                f'<div class="custom-select-options">{opts}</div></details>')
+        return (f'<div class="custom-select css-dropdown">'
+                f'<input type="checkbox" id="dd-sort" class="dd-toggle">'
+                f'<label for="dd-sort" class="dd-backdrop"></label>'
+                f'<label for="dd-sort" class="custom-select-btn">{cur_label}</label>'
+                f'<div class="custom-select-options">{opts}</div></div>')
 
     def rows_html():
         if not rows:
