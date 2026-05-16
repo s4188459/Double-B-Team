@@ -1,22 +1,21 @@
 import os
-import re
 import urllib.parse
 import pyhtml
 import nav
 
 ROWS_PER_PAGE = 10
 
+# basic SQL escaping to prevent injection in filter queries
 def _esc(s):
     return str(s).replace("'", "''")
 
-def _antigen_name(full_name):
-    n = full_name.split(",")[0]
-    return re.sub(r'-containing vaccine', '', n, flags=re.IGNORECASE).strip()
 
+# CSS class for coverage badge coloring
 def _cov_class(v):
     if v is None: return "cov-mid"
     return "cov-high" if v >= 90 else ("cov-mid" if v >= 70 else "cov-low")
 
+# CSS class for the improvement delta badge: green positive, red negative, gray zero
 def _delta_class(v):
     if v is None: return "delta-zero"
     if v > 0:  return "delta-pos"
@@ -34,6 +33,13 @@ def get_page_html(form_data):
     end_year_f   = _get("end_year",   "2024")
     top_f        = _get("top",        "10")
     sort_f       = _get("sort",       "increase_desc")
+    t3_view_f    = _get("t3_view",    "table")
+
+    # applied_* values only update when user clicks Apply Filters
+    applied_antigen_f    = _get("applied_antigen")
+    applied_start_year_f = _get("applied_start_year", "2000")
+    applied_end_year_f   = _get("applied_end_year",   "2024")
+    applied_top_f        = _get("applied_top",        "10")
 
     try: page = max(1, int(_get("page", "1")))
     except: page = 1
@@ -45,24 +51,30 @@ def get_page_html(form_data):
     year_opts = pyhtml.get_results_from_query(db,
         "SELECT DISTINCT year FROM Vaccination ORDER BY year DESC")
 
-    # Parse + validate years
     try: start_y = int(start_year_f)
     except: start_y = 2000
     try: end_y = int(end_year_f)
     except: end_y = 2024
+    # swap if someone manually typed end < start in the URL
     if end_y < start_y:
-        start_y, end_y = end_y, start_y  # swap silently (safety net for URL tampering)
+        start_y, end_y = end_y, start_y
 
-    # Cascade: each dropdown only shows valid choices relative to the other
-    start_year_opts = [(yr,) for (yr,) in year_opts if int(yr) <= end_y]   # Start ≤ End
-    end_year_opts   = [(yr,) for (yr,) in year_opts if int(yr) >= start_y] # End ≥ Start
+    # each year dropdown only shows values valid relative to the other — prevents impossible ranges
+    start_year_opts = [(yr,) for (yr,) in year_opts if int(yr) <= end_y]
+    end_year_opts   = [(yr,) for (yr,) in year_opts if int(yr) >= start_y]
 
-    # Top N
     TOP_OPTS = [("5","Top 5"), ("10","Top 10"), ("20","Top 20"), ("50","Top 50"), ("100","Top 100")]
     TOP_MAP  = {v: int(v) for v, _ in TOP_OPTS}
     top_n    = TOP_MAP.get(top_f, 10)
 
-    # Sort options
+    try: applied_start_y = int(applied_start_year_f)
+    except: applied_start_y = 2000
+    try: applied_end_y = int(applied_end_year_f)
+    except: applied_end_y = 2024
+    if applied_end_y < applied_start_y:
+        applied_start_y, applied_end_y = applied_end_y, applied_start_y
+    applied_top_n = TOP_MAP.get(applied_top_f, 10)
+
     SORT_MAP = {
         "increase_desc":  "(e.coverage - s.coverage) DESC",
         "increase_asc":   "(e.coverage - s.coverage) ASC",
@@ -89,24 +101,19 @@ def get_page_html(form_data):
     }
     order_expr = SORT_MAP.get(sort_f, "(e.coverage - s.coverage) DESC")
 
-    # Antigen WHERE condition (optional — applied inside both subqueries)
-    a_cond = f"AND antigen = '{_esc(antigen_f)}'" if antigen_f else ""
+    # table and chart only activate when a specific antigen has been applied
+    table_active    = bool(applied_antigen_f)
+    antigen_display = applied_antigen_f
 
-    # ══════════════════════════════════════════════════════════════════
-    # Core SQL: two subquery JOINs (start year + end year dataset).
-    # INNER JOIN guarantees BOTH years must have real data for the country.
-    # typeof='real' excludes 5415 rows where missing data is stored as '' not NULL.
-    # AVG+GROUP BY collapses to 1 row per country — prevents cross-product
-    # duplicates when no antigen is selected (N antigens × M antigens = N×M rows).
-    # When antigen IS selected: one row per country → AVG = that single value.
-    # All sorting and limiting done in SQL — no Python post-processing.
-    # ══════════════════════════════════════════════════════════════════
+    def inactive_msg():
+        return '<div class="chart-msg">Please select an <strong>Antigen</strong> then click <strong>Apply Filters</strong> to view this data</div>'
+
+    a_cond = f"AND antigen = '{_esc(applied_antigen_f)}'" if applied_antigen_f else ""
+
+    # builds a subquery for a single year: rate = doses / population × 100
+    # AVG + GROUP BY prevents cross-product duplicates when no antigen filter is set
+    # typeof='real' skips rows where doses is stored as '' instead of NULL
     def _sub(yr):
-        # Vaccination rate = doses / total country population × 100
-        # JOIN CountryPopulation to get total population for that year.
-        # AVG + GROUP BY collapses to 1 row per country (prevents cross-product
-        # duplicates when multiple antigens exist and no antigen filter is set).
-        # typeof='real' excludes rows where doses is stored as '' not NULL.
         return f"""(
             SELECT v.country,
                    AVG(v.doses / p.population * 100) AS coverage
@@ -120,8 +127,8 @@ def get_page_html(form_data):
     join_sql = f"""
         FROM Country c
         JOIN Region  r ON c.region     = r.RegionID
-        JOIN {_sub(start_y)} s ON c.CountryID = s.country
-        JOIN {_sub(end_y)}   e ON c.CountryID = e.country"""
+        JOIN {_sub(applied_start_y)} s ON c.CountryID = s.country
+        JOIN {_sub(applied_end_y)}   e ON c.CountryID = e.country"""
 
     select_cols = """
         c.name                                      AS country_name,
@@ -130,100 +137,114 @@ def get_page_html(form_data):
         ROUND(e.coverage, 2)                        AS end_rate,
         ROUND(e.coverage - s.coverage, 2)           AS increase"""
 
-    # Total matching countries (for results bar)
-    n_total = pyhtml.get_results_from_query(db,
-        f"SELECT COUNT(*) {join_sql}")[0][0]
+    if table_active:
+        # total count for the results bar — no Top N limit here
+        n_total = pyhtml.get_results_from_query(db,
+            f"SELECT COUNT(*) {join_sql}")[0][0]
+        # sorted and limited to Top N in SQL — no Python post-processing
+        top_rows = pyhtml.get_results_from_query(db, f"""
+            SELECT {select_cols}
+            {join_sql}
+            ORDER BY {order_expr}
+            LIMIT {applied_top_n}""")
+    else:
+        n_total  = 0
+        top_rows = []
 
-    # Top N rows (sorted, limited — all in SQL)
-    top_rows = pyhtml.get_results_from_query(db, f"""
-        SELECT {select_cols}
-        {join_sql}
-        ORDER BY {order_expr}
-        LIMIT {top_n}""")
-
-    # Paginate within the already-limited top_rows
+    # paginate within the already-limited top_rows slice
     cnt         = len(top_rows)
     total_pages = max(1, -(-cnt // ROWS_PER_PAGE))
     page        = min(page, total_pages)
     rows        = top_rows[(page-1)*ROWS_PER_PAGE : page*ROWS_PER_PAGE]
 
-    # ── URL builder ──
+    # URL builder — carries all current params forward, overriding with kw
     def url(**kw):
         p = {}
-        if antigen_f:        p["antigen"]    = antigen_f
+        if antigen_f:        p["antigen"]         = antigen_f
         p["start_year"]  = str(start_y)
         p["end_year"]    = str(end_y)
-        if top_f != "10":    p["top"]        = top_f
-        if sort_f != "increase_desc": p["sort"] = sort_f
+        if top_f != "10":    p["top"]             = top_f
+        if sort_f != "increase_desc": p["sort"]   = sort_f
+        if t3_view_f == "chart": p["t3_view"]     = t3_view_f
+        if applied_antigen_f:    p["applied_antigen"]    = applied_antigen_f
+        p["applied_start_year"] = str(applied_start_y)
+        p["applied_end_year"]   = str(applied_end_y)
+        if applied_top_f != "10": p["applied_top"] = applied_top_f
         p["page"] = str(page)
         p.update(kw)
         qs = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in p.items() if v)
         return f"/binh_page_3?{qs}#results-section" if qs else "/binh_page_3#results-section"
 
-    # ── Cascade year URL builder — for <details> Start/End Year nav links ──
-    # Clicking an option navigates instantly, preserving all other params. No JS.
+    # thin wrapper so year dropdown links preserve antigen/top/sort state
     def cascade_year_url(start_year, end_year):
-        p = {}
-        if antigen_f:                       p["antigen"]    = antigen_f
-        p["start_year"]                                     = str(start_year)
-        p["end_year"]                                       = str(end_year)
-        if top_f != "10":                   p["top"]        = top_f
-        if sort_f != "increase_desc":       p["sort"]       = sort_f
-        p["page"] = "1"
-        qs = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in p.items() if v)
-        return f"/binh_page_3?{qs}#results-section" if qs else "/binh_page_3#results-section"
+        return url(start_year=str(start_year), end_year=str(end_year), page="1")
 
-    # ── Filter tags ──
     filter_tags = ""
-    if antigen_f:
-        nm = next((_antigen_name(n) for aid, n in antigen_opts if aid == antigen_f), antigen_f)
-        filter_tags += f'<span class="filter-tag">{nm}</span> '
-    filter_tags += f'<span class="filter-tag">{start_y} → {end_y}</span> '
-    filter_tags += f'<span class="filter-tag">Top {top_n}</span> '
+    if applied_antigen_f:
+        filter_tags += f'<span class="filter-tag">{applied_antigen_f}</span> '
+    filter_tags += f'<span class="filter-tag">{applied_start_y} → {applied_end_y}</span> '
+    filter_tags += f'<span class="filter-tag">Top {applied_top_n}</span> '
 
-    # ── Dropdown builders ──
     def sel_antigen():
-        o = '<option value="">All Antigens</option>'
-        for aid, an in antigen_opts:
-            s = "selected" if aid == antigen_f else ""
-            o += f'<option value="{aid}" {s}>{_antigen_name(an)}</option>'
-        return f'<select name="antigen" class="filter-select">{o}</select>'
+        label = antigen_f if antigen_f else "Select Antigen"
+        opts = f'<a href="{url(antigen="", page="1")}" class="{"selected" if not antigen_f else ""}">All Antigens</a>'
+        for aid, _ in antigen_opts:
+            sc = "selected" if aid == antigen_f else ""
+            opts += f'<a href="{url(antigen=aid, page="1")}" class="{sc}">{aid}</a>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<input type="checkbox" id="dd-antigen" class="dd-toggle">'
+                f'<label for="dd-antigen" class="dd-backdrop"></label>'
+                f'<label for="dd-antigen" class="custom-select-btn">{label}</label>'
+                f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_start_year():
         opts = ""
         for (yr,) in start_year_opts:
             sc = "selected" if int(yr) == start_y else ""
             opts += f'<a href="{cascade_year_url(yr, end_y)}" class="{sc}">{yr}</a>'
-        return (f'<details class="custom-select">'
-                f'<summary>{start_y}</summary>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<input type="checkbox" id="dd-start" class="dd-toggle">'
+                f'<label for="dd-start" class="dd-backdrop"></label>'
+                f'<label for="dd-start" class="custom-select-btn">{start_y}</label>'
                 f'<div class="custom-select-options">{opts}</div>'
-                f'</details>')
+                f'</div>')
 
     def sel_end_year():
         opts = ""
         for (yr,) in end_year_opts:
             sc = "selected" if int(yr) == end_y else ""
             opts += f'<a href="{cascade_year_url(start_y, yr)}" class="{sc}">{yr}</a>'
-        return (f'<details class="custom-select">'
-                f'<summary>{end_y}</summary>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<input type="checkbox" id="dd-end" class="dd-toggle">'
+                f'<label for="dd-end" class="dd-backdrop"></label>'
+                f'<label for="dd-end" class="custom-select-btn">{end_y}</label>'
                 f'<div class="custom-select-options">{opts}</div>'
-                f'</details>')
+                f'</div>')
 
     def sel_top():
-        o = ""
-        for val, label in TOP_OPTS:
-            s = "selected" if val == top_f else ""
-            o += f'<option value="{val}" {s}>{label}</option>'
-        return f'<select name="top" class="filter-select">{o}</select>'
+        cur_label = next((lbl for val, lbl in TOP_OPTS if val == top_f), "Top 10")
+        opts = ""
+        for val, lbl in TOP_OPTS:
+            sc = "selected" if val == top_f else ""
+            opts += f'<a href="{url(top=val, page="1")}" class="{sc}">{lbl}</a>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<input type="checkbox" id="dd-top" class="dd-toggle">'
+                f'<label for="dd-top" class="dd-backdrop"></label>'
+                f'<label for="dd-top" class="custom-select-btn">{cur_label}</label>'
+                f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_sort():
-        o = ""
-        for val, label in SORT_LABELS.items():
-            s = "selected" if val == sort_f else ""
-            o += f'<option value="{val}" {s}>{label}</option>'
-        return f'<select name="sort" class="filter-select">{o}</select>'
+        cur_label = SORT_LABELS.get(sort_f, "Highest Increase")
+        opts = ""
+        for val, lbl in SORT_LABELS.items():
+            sc = "selected" if val == sort_f else ""
+            opts += f'<a href="{url(sort=val, page="1")}" class="{sc}">{lbl}</a>'
+        return (f'<div class="custom-select css-dropdown">'
+                f'<input type="checkbox" id="dd-sort" class="dd-toggle">'
+                f'<label for="dd-sort" class="dd-backdrop"></label>'
+                f'<label for="dd-sort" class="custom-select-btn">{cur_label}</label>'
+                f'<div class="custom-select-options">{opts}</div></div>')
 
-    # ── Table rows ──
     def rows_html():
         if not rows:
             return '<tr><td colspan="6" class="no-data">No countries found — check that both years have population and vaccination data.</td></tr>'
@@ -247,7 +268,7 @@ def get_page_html(form_data):
                     f"</tr>")
         return out
 
-    # ── Pagination ──
+    # renders prev/next + numbered page links with ellipsis for large page counts
     def paginate():
         if total_pages <= 1:
             return ""
@@ -281,9 +302,9 @@ def get_page_html(form_data):
             <div class="pagination-btns">{first}{prev}{"".join(mid)}{nxt}{last}</div>
         </div>"""
 
-    # ── Sortable headers ──
     _SIMG = '<img src="/images/order%20icon.png" class="sort-icon-img" alt="">'
 
+    # sortable column header — toggles asc/desc and links back with the new sort key
     def th(label, asc_key, desc_key):
         is_asc = sort_f == asc_key
         next_k = desc_key if is_asc else asc_key
@@ -292,13 +313,13 @@ def get_page_html(form_data):
                 f'<a href="{url(sort=next_k, page="1")}" class="sort-link">'
                 f'{label} {_SIMG}</a></th>')
 
-    # ── Excel export (all top_rows, not just current page) ──
+    # exports all top_rows (not just the current page) as an Excel-compatible data: URI
     def _xls_export():
         def esc(v):
             s = str(v if v is not None else "")
             return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         headers = ["Rank", "Country", "Region",
-                   f"Coverage {start_y} (%)", f"Coverage {end_y} (%)", "Increase (%)"]
+                   f"Coverage {applied_start_y} (%)", f"Coverage {applied_end_y} (%)", "Increase (%)"]
         ths = "".join(f"<th>{esc(h)}</th>" for h in headers)
         trs = ""
         for i, (cn, rn, sc, ec, d) in enumerate(top_rows):
@@ -313,7 +334,63 @@ def get_page_html(form_data):
 
     export_href = _xls_export()
 
-    # ── CSS + nav ──
+    # horizontal bar chart — green for improvement, red for decline, scrollable when Top ≥ 20
+    def chart3_html():
+        title_text = (f"TOP {applied_top_n} COUNTRIES BY VACCINATION RATE INCREASE of {antigen_display} FROM {applied_start_y} TO {applied_end_y}"
+                      if table_active else "TOP COUNTRIES BY VACCINATION RATE INCREASE")
+        title = f'<div class="table-header-row"><span class="table-title">{title_text}</span></div>'
+        if not table_active:
+            return title + inactive_msg()
+        if len(top_rows) < 2:
+            return title + '<div class="chart-msg">Not enough data — need at least 2 countries to display a chart</div>'
+        sorted_rows = sorted(top_rows, key=lambda r: r[4] if r[4] is not None else 0, reverse=True)
+        max_abs = max(abs(r[4] or 0) for r in sorted_rows) or 1
+        out = ""
+        for i, (cname, rname, start_r, end_r, delta) in enumerate(sorted_rows):
+            d = delta or 0
+            w = round(abs(d) / max_abs * 100, 1)
+            if d > 0:
+                fill_cls, sign = "bar-fill-green", "+"
+            elif d < 0:
+                fill_cls, sign = "bar-fill-red", ""
+            else:
+                fill_cls, sign = "bar-fill-gray", ""
+            out += (f'<div class="bar-row">'
+                    f'<span class="bar-rank">{i+1}</span>'
+                    f'<span class="bar-label" title="{cname}">{cname}</span>'
+                    f'<div class="bar-track"><div class="{fill_cls}" style="width:{w}%"></div></div>'
+                    f'<span class="bar-val">{sign}{d}%</span>'
+                    f'</div>')
+        inner = f'<div class="bar-chart-h">{out}</div>'
+        if applied_top_n >= 20:
+            inner = f'<div class="bar-chart-scroll">{inner}</div>'
+        return title + inner
+
+    if table_active:
+        t3_panel_content = f"""
+            <div class="table-header-row">
+                <span class="table-title">TOP {applied_top_n} COUNTRIES BY VACCINATION RATE INCREASE of {antigen_display} FROM {applied_start_y} TO {applied_end_y}</span>
+                <a href="{export_href}" download="vaccination_improvement.xls" class="export-btn">
+                    <img src="/images/export%20icon.png" alt=""> Export Data
+                </a>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead><tr>
+                        <th>Rank</th>
+                        {th("Country",                                  "country_asc",  "country_desc")}
+                        {th("Region",                                   "region_asc",   "region_desc")}
+                        {th(f"Vaccination Rate In {applied_start_y}",   "start_asc",    "start_desc")}
+                        {th(f"Vaccination Rate In {applied_end_y}",     "end_asc",      "end_desc")}
+                        {th("Vaccination Rate Increase",                "increase_asc", "increase_desc")}
+                    </tr></thead>
+                    <tbody>{rows_html()}</tbody>
+                </table>
+            </div>
+            {paginate()}"""
+    else:
+        t3_panel_content = inactive_msg()
+
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
         css = f.read()
@@ -341,17 +418,25 @@ def get_page_html(form_data):
 <div class="filter-card">
     <div class="filter-row">
 
-        <!-- Start Year & End Year: <details>/<a> links — pure HTML/CSS cascade, no JavaScript -->
+        <!-- All dropdowns use instant navigation — selecting any option reloads immediately -->
         <div class="filter-group"><label>Start Year</label>{sel_start_year()}</div>
         <div class="filter-group"><label>End Year</label>{sel_end_year()}</div>
+        <div class="filter-group"><label>Antigen</label>{sel_antigen()}</div>
+        <div class="filter-group"><label>Top</label>{sel_top()}</div>
+        <div class="filter-group"><label>Sort by</label>{sel_sort()}</div>
 
-        <!-- Apply Filters form: pass current year selection as hidden fields -->
+        <!-- Apply Filters: hidden fields preserve current params when submitted -->
         <form method="GET" action="/binh_page_3" style="display:contents">
-            <input type="hidden" name="start_year" value="{start_y}">
-            <input type="hidden" name="end_year"   value="{end_y}">
-            <div class="filter-group"><label>Antigen</label>{sel_antigen()}</div>
-            <div class="filter-group"><label>Top</label>{sel_top()}</div>
-            <div class="filter-group"><label>Sort by</label>{sel_sort()}</div>
+            <input type="hidden" name="antigen"             value="{antigen_f}">
+            <input type="hidden" name="start_year"          value="{start_y}">
+            <input type="hidden" name="end_year"            value="{end_y}">
+            <input type="hidden" name="top"                 value="{top_f}">
+            <input type="hidden" name="sort"                value="{sort_f}">
+            <input type="hidden" name="t3_view"             value="{t3_view_f}">
+            <input type="hidden" name="applied_antigen"     value="{antigen_f}">
+            <input type="hidden" name="applied_start_year"  value="{start_y}">
+            <input type="hidden" name="applied_end_year"    value="{end_y}">
+            <input type="hidden" name="applied_top"         value="{top_f}">
             <div class="filter-actions">
                 <button type="submit" class="btn-apply">
                     <img src="/images/filter%20icon.png" alt=""> Apply Filters
@@ -377,44 +462,25 @@ def get_page_html(form_data):
 
 <div class="single-table-wrap">
     <div class="table-card">
-        <input type="radio" id="t3-table" name="t3-view" checked class="tab-radio">
-        <input type="radio" id="t3-chart" name="t3-view"         class="tab-radio">
+        <input type="radio" id="t3-table" name="t3-view" {'checked' if t3_view_f != 'chart' else ''} class="tab-radio">
+        <input type="radio" id="t3-chart" name="t3-view" {'checked' if t3_view_f == 'chart' else ''} class="tab-radio">
         <div class="tab-bar">
             <div class="tab-btn-group">
-                <label for="t3-table" class="tab-btn t3-table-label">
+                <a href="{url(t3_view='table')}" class="tab-btn t3-table-label">
                     <img src="/images/table%20icon.png" alt=""> Table
-                </label>
-                <label for="t3-chart" class="tab-btn t3-chart-label">
+                </a>
+                <a href="{url(t3_view='chart')}" class="tab-btn t3-chart-label">
                     <img src="/images/chart%20icon.png" alt=""> Chart
-                </label>
+                </a>
             </div>
         </div>
 
         <div class="t3-table-panel">
-            <div class="table-header-row">
-                <span class="table-title">TOP COUNTRIES BY VACCINATION RATE INCREASE</span>
-                <a href="{export_href}" download="vaccination_improvement.xls" class="export-btn">
-                    <img src="/images/export%20icon.png" alt=""> Export Data
-                </a>
-            </div>
-            <div class="table-wrapper">
-                <table class="data-table">
-                    <thead><tr>
-                        <th>Rank</th>
-                        {th("Country",                        "country_asc",  "country_desc")}
-                        {th("Region",                         "region_asc",   "region_desc")}
-                        {th(f"Vaccination Rate In {start_y}", "start_asc",    "start_desc")}
-                        {th(f"Vaccination Rate In {end_y}",   "end_asc",      "end_desc")}
-                        {th("Vaccination Rate Increase",      "increase_asc", "increase_desc")}
-                    </tr></thead>
-                    <tbody>{rows_html()}</tbody>
-                </table>
-            </div>
-            {paginate()}
+            {t3_panel_content}
         </div>
 
         <div class="t3-chart-panel">
-            <div class="chart-placeholder">&#9650; Chart view coming soon</div>
+            {chart3_html()}
         </div>
     </div>
 </div>
@@ -422,10 +488,9 @@ def get_page_html(form_data):
 <div class="info-note">
     <img src="/images/iconinfo.png" class="info-icon-img" alt="">
     <span>Note: Only countries with vaccination and population data for <strong>BOTH</strong>
-    {start_y} and {end_y} are included.
+    {applied_start_y} and {applied_end_y} are included.
     <strong>Vaccination Rate = doses administered &divide; total country population &times; 100</strong>.
-    Increase = End Year Rate &minus; Start Year Rate (percentage points).
-    If no antigen is selected, rates are averaged across all available antigens.</span>
+    Increase = End Year Rate &minus; Start Year Rate (percentage points).</span>
 </div>
 
 {footer_html}

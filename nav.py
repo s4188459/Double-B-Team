@@ -4,8 +4,10 @@ import pyhtml
 
 DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'immunisation.db')
 
+# pages that live under the Data dropdown — used to keep it highlighted when active
 _DATA_PAGES = {"/binh_page_2", "/binh_page_3", "/bao_page_2", "/bao_page_3"}
 
+# breadcrumb trail per page; None href means it shows as plain text, not a link
 _BREADCRUMBS = {
     "/bao_page_1":  [("Home", "/"),              ("About", None)],
     "/binh_page_2": [("Home", "/"), ("Data", None), ("Vaccination Data Explorer", None)],
@@ -14,6 +16,7 @@ _BREADCRUMBS = {
     "/bao_page_3":  [("Home", "/"), ("Data", None), ("Infection Improvement by Economic Status Explorer", None)],
 }
 
+# renders the "Home > Data > Page Name" trail shown below the header
 def _build_breadcrumb(active_page):
     crumbs = _BREADCRUMBS.get(active_page)
     if not crumbs:
@@ -31,6 +34,7 @@ def _build_breadcrumb(active_page):
             parts.append('<span class="breadcrumb-sep">&rsaquo;</span>')
     return f'<nav class="breadcrumb">{"".join(parts)}</nav>'
 
+# maps search result labels to their destination page — used by the /search redirect
 _PAGE_MAP = {
     "Vaccination Data Explorer":                         "/binh_page_2",
     "Vaccination Improvement Explorer":                  "/binh_page_3",
@@ -38,27 +42,28 @@ _PAGE_MAP = {
     "Infection Improvement by Economic Status Explorer": "/bao_page_3",
 }
 
-# ── helpers ──────────────────────────────────────────────────────────────────
-
+# escapes & and " so text is safe inside HTML attribute values
 def _html_esc(s):
     return s.replace('&', '&amp;').replace('"', '&quot;')
 
+# DB stores names like "DTP-containing vaccine, Hep B..." — trim to a short display label
 def _antigen_display_name(full_name):
     name = full_name.split(",")[0]
     name = re.sub(r'-containing vaccine', '', name, flags=re.IGNORECASE).strip()
     return name
 
+# basic SQL escaping so user-supplied search text doesn't break queries
 def _esc_sql(s):
     return s.replace("'", "''")
 
-# ── navigation bar ────────────────────────────────────────────────────────────
-
+# builds the full page header: language bar, logo, nav links, search box, and breadcrumb
 def get_nav_html(active_page="/"):
     countries = pyhtml.get_results_from_query(DB, "SELECT CountryID, name FROM Country ORDER BY name")
     regions   = pyhtml.get_results_from_query(DB, "SELECT RegionID, region FROM Region ORDER BY region")
     antigens  = pyhtml.get_results_from_query(DB, "SELECT AntigenID, name FROM Antigen ORDER BY AntigenID")
     inf_types = pyhtml.get_results_from_query(DB, "SELECT id, description FROM Infection_Type ORDER BY description")
 
+    # autocomplete options for the search bar — format is "Entity in Page Name"
     datalist_opts = []
     for _, cname in countries:
         e = _html_esc(cname)
@@ -78,10 +83,12 @@ def get_nav_html(active_page="/"):
         datalist_opts.append(f'<option value="{e} in Infection Improvement by Economic Status Explorer">')
     datalist_html = '\n'.join(datalist_opts)
 
+    # which nav item gets the active highlight based on the current page
     home_class  = "nav-link active" if active_page == "/" else "nav-link"
     about_class = "nav-link active" if active_page == "/bao_page_1" else "nav-link"
     data_class  = "nav-dropdown-toggle active" if active_page in _DATA_PAGES else "nav-dropdown-toggle"
 
+    # shorthand for dropdown items — adds active class when this is the current page
     def _dd(href, label):
         cls = ' class="active"' if active_page == href else ''
         return f'<a href="{href}"{cls}>{label}</a>'
@@ -92,6 +99,12 @@ def get_nav_html(active_page="/"):
         <a href="#">English</a>
         <span class="divider">|</span>
         <a href="#">Vietnamese</a>
+        <span class="divider">|</span>
+        <a href="#">Italian</a>
+        <span class="divider">|</span>
+        <a href="#">French</a>
+        <span class="divider">|</span>
+        <a href="#">German</a>
     </div>
 
     <!-- Main header -->
@@ -140,8 +153,7 @@ def get_nav_html(active_page="/"):
     </header>
     {_build_breadcrumb(active_page)}"""
 
-# ── footer ────────────────────────────────────────────────────────────────────
-
+# static footer with brand info, quick links, and legal text
 def get_footer_html():
     return """
     <!-- Footer -->
@@ -207,8 +219,7 @@ def get_footer_html():
         </div>
     </footer>"""
 
-# ── search redirect ───────────────────────────────────────────────────────────
-
+# /search endpoint — parses the query and sends a meta-refresh redirect to the right page
 def get_page_html(form_data):
     q = (form_data.get("q") or [""])[0].strip()
     redirect = _resolve(q)
@@ -219,6 +230,7 @@ def get_page_html(form_data):
 </head><body></body></html>"""
 
 
+# matches "Entity in Page Name" patterns and returns the target URL
 def _resolve(q):
     for page_name, base_url in _PAGE_MAP.items():
         marker = f" in {page_name}"
@@ -228,6 +240,7 @@ def _resolve(q):
     return "/"
 
 
+# tries to match the search term as a country, region, antigen, or infection type in that order
 def _find_entity(entity, base_url):
     safe = _esc_sql(entity)
 
