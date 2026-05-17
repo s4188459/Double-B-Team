@@ -3,16 +3,19 @@ import re
 import pyhtml
 import nav
 
+# fixed color palette — same vaccine family always gets the same color
 DISEASE_PALETTE = [
     "#1a7cd4", "#27ae60", "#8e44ad",
     "#e67e22", "#e74c3c", "#16a085",
     "#2980b9", "#d35400",
 ]
 
+# extracts the letter prefix of an antigen ID, e.g. "BCG1" → "BCG"
 def _antigen_abbr(antigen_id):
     letters = re.sub(r'\d', '', antigen_id)
     return letters[:3].upper()
 
+# extracts the dose number as a readable label, e.g. "BCG1" → "1st dose"
 def _antigen_dose(antigen_id):
     m = re.search(r'(\d+)$', antigen_id)
     if not m:
@@ -21,11 +24,13 @@ def _antigen_dose(antigen_id):
     suffix = {1: "1st", 2: "2nd", 3: "3rd"}.get(n, f"{n}th")
     return f"{suffix} dose"
 
+# strips "-containing vaccine" and everything after the first comma from DB names
 def _antigen_display_name(full_name):
     name = full_name.split(",")[0]
     name = re.sub(r'-containing vaccine', '', name, flags=re.IGNORECASE).strip()
     return name
 
+# assigns colors by antigen family so related vaccines always share the same color
 _color_assigned = {}
 def _antigen_color(antigen_id):
     prefix = re.sub(r'\d', '', antigen_id)
@@ -33,11 +38,13 @@ def _antigen_color(antigen_id):
         _color_assigned[prefix] = DISEASE_PALETTE[len(_color_assigned) % len(DISEASE_PALETTE)]
     return _color_assigned[prefix]
 
+# home page — fetches headline stats and builds the full HTML
 def get_page_html(form_data):
     print("About to return page home page...")
 
     db = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'immunisation.db')
 
+    # four snapshot numbers shown in the top section
     stat1_countries = pyhtml.get_results_from_query(db,
         "SELECT COUNT(DISTINCT country) FROM Vaccination"
     )[0][0]
@@ -62,6 +69,7 @@ def get_page_html(form_data):
 
     antigens = pyhtml.get_results_from_query(db, "SELECT AntigenID, name FROM Antigen ORDER BY AntigenID")
 
+    # one card per antigen — colors reset each request so the palette stays consistent
     _color_assigned.clear()
     disease_cards_html = ""
     for antigen_id, full_name in antigens:
@@ -117,7 +125,7 @@ def get_page_html(form_data):
                     <input type="checkbox" id="methodology-toggle" class="methodology-checkbox">
                     <label for="methodology-toggle" class="methodology-btn">
                         View methodology
-                        <img src="/images/icon_for_information.png" alt="info" class="btn-icon">
+                        <img src="/images/iconinfo.png" alt="info" class="btn-icon">
                     </label>
                     <div class="methodology-popup">
                         <p><strong>Data Source:</strong> Metrics are aggregated from the WHO Global Immunization Data (2000&ndash;2024).</p>

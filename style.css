@@ -759,7 +759,7 @@ a {
 }
 .filter-row   { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .filter-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 110px; }
-.filter-group label { font-size: 14px; font-weight: 700; color: #444; }
+.filter-group > label { font-size: 14px; font-weight: 700; color: #444; }
 .filter-select {
     border: 1.5px solid #d0d4da;
     border-radius: 8px;
@@ -770,6 +770,69 @@ a {
     cursor: pointer;
 }
 .filter-select:focus { border-color: #1a7cd4; outline: none; }
+
+/* Custom dropdown — :focus-within opens/closes, closes on outside click, no JavaScript needed */
+.custom-select { position: relative; display: block; }
+.custom-select-btn {
+    display: block; width: 100%;
+    border: 1.5px solid #d0d4da; border-radius: 8px;
+    padding: 8px 28px 8px 10px; font-size: 13px; color: #333;
+    background: #fff;
+    cursor: pointer; font-family: inherit; text-align: left;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    user-select: none;
+    position: relative;
+    z-index: 201;
+}
+.custom-select-btn::after {
+    content: '';
+    position: absolute;
+    right: 8px; top: 50%;
+    transform: translateY(-50%);
+    width: 16px; height: 16px;
+    background: url("/images/dropdown%20icon.png") no-repeat center;
+    background-size: 16px auto;
+    transition: transform 0.25s;
+    pointer-events: none;
+}
+.dd-toggle { display: none; }
+.dd-backdrop { display: none; }
+.css-dropdown .custom-select-options { display: none; }
+.dd-toggle:checked ~ .custom-select-options { display: block; }
+.dd-toggle:checked ~ .custom-select-btn::after { transform: translateY(-50%) rotate(180deg); }
+.dd-toggle:checked ~ .dd-backdrop { display: block; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 199; cursor: default; }
+.custom-select-options {
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    z-index: 200;
+    background: #fff;
+    border: 0.5px solid #333;
+    border-radius: 4px;
+    margin-top: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+}
+.custom-select-options a {
+    display: block;
+    padding: 4px 8px;
+    font-size: 13px;
+    color: #333;
+    text-decoration: none;
+}
+.custom-select-options a:hover { background: #f0f6ff; }
+.custom-select-options a.selected { background: #777; color: #fff; } /* ← màu selected option */
+.custom-select-locked {
+    display: block;
+    border: 1.5px solid #d0d4da;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: #555;
+    background: #f0f0f0;
+    cursor: not-allowed;
+}
+
 .filter-actions { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .btn-apply {
     background: #1a7cd4; color: #fff;
@@ -953,6 +1016,87 @@ a {
 .chart-placeholder {
     padding: 64px 20px; text-align: center; color: #bbb; font-size: 14px;
 }
+
+/* ══════════════════════════════
+   BAR CHARTS
+══════════════════════════════ */
+
+/* Empty / warning message inside chart panel */
+.chart-msg {
+    padding: 48px 20px; text-align: center; color: #888; font-size: 14px;
+    background: #f9fafb; border-radius: 8px; margin: 16px 20px;
+}
+
+/* ── Horizontal bar (Table 1, Level 3) ── */
+.bar-chart-h { padding: 16px 20px; }
+.bar-chart-h .bar-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+}
+.bar-chart-h .bar-rank  { min-width: 20px; font-size: 11px; color: #aaa; text-align: right; }
+.bar-chart-h .bar-label {
+    min-width: 130px; max-width: 130px; font-size: 12px; color: #333;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right;
+}
+.bar-chart-h .bar-track {
+    flex: 1; background: #eef1f5; border-radius: 4px; height: 20px; overflow: hidden;
+}
+.bar-chart-h .bar-fill-blue  { height:100%; background:#2980b9; border-radius:4px; min-width:2px; }
+.bar-chart-h .bar-fill-green { height:100%; background:#27ae60; border-radius:4px; min-width:2px; }
+.bar-chart-h .bar-fill-red   { height:100%; background:#e74c3c; border-radius:4px; min-width:2px; }
+.bar-chart-h .bar-fill-gray  { height:100%; background:#bbb;    border-radius:4px; min-width:2px; }
+.bar-chart-h .bar-val { min-width: 52px; font-size: 12px; font-weight: 600; color: #555; }
+
+/* Scroll wrapper — used when Top N >= 20 */
+.bar-chart-scroll { max-height: 420px; overflow-y: auto; overflow-x: hidden; padding-right: 4px; }
+.bar-chart-scroll::-webkit-scrollbar       { width: 6px; }
+.bar-chart-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+.bar-chart-scroll::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+/* ── Vertical bar (Table 2 — Region summary) ── */
+.bar-chart-v-wrap { padding: 16px 20px 8px; }
+.bar-chart-v {
+    display: flex; align-items: flex-end; gap: 12px; height: 200px;
+}
+.bar-chart-v .bar-col {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: flex-end; flex: 1; min-width: 50px; height: 100%;
+}
+.bar-chart-v .bar-col-val  { font-size: 12px; font-weight: 700; color: #333; margin-bottom: 4px; }
+.bar-chart-v .bar-col-fill { width: 80%; border-radius: 4px 4px 0 0; min-height: 4px; }
+.bar-chart-v-labels {
+    display: flex; gap: 12px; padding: 6px 20px 0;
+}
+.bar-chart-v-labels .bar-col-label {
+    flex: 1; min-width: 50px; font-size: 10px; text-align: center;
+    color: #666; word-break: break-word; line-height: 1.3;
+}
+
+/* ── Single full-width table (level 3) ── */
+.single-table-wrap {
+    margin: 0 65px;
+}
+.single-table-wrap .table-card { flex: none; }
+
+/* ── CSS Tabs for t3 ── */
+.t3-table-panel, .t3-chart-panel { display: none; }
+#t3-table:checked ~ .t3-table-panel { display: block; }
+#t3-chart:checked  ~ .t3-chart-panel { display: block; }
+#t3-table:checked ~ .tab-bar .t3-table-label,
+#t3-chart:checked  ~ .tab-bar .t3-chart-label {
+    background: #fff; color: #111;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.13);
+}
+#t3-table:checked ~ .tab-bar .t3-table-label img,
+#t3-chart:checked  ~ .tab-bar .t3-chart-label img { opacity: 1; }
+
+/* ── Delta badge (increase / decrease) ── */
+.delta-badge {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 12px; font-size: 12px; font-weight: 700;
+}
+.delta-pos  { background: #e6faf0; color: #1a7a4a; }
+.delta-neg  { background: #fee2e2; color: #b91c1c; }
+.delta-zero { background: #f3f4f6; color: #666; }
 
 /* ── Info note ── */
 .info-note {
