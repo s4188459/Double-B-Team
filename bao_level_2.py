@@ -5,6 +5,78 @@ import urllib.parse
 import pyhtml
 import nav
 
+ROWS_PER_PAGE = 10
+SAVED_VIEWS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bao_level_2_saved_views.json")
+
+
+def _html(value):
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def _esc(value):
+    return str(value).replace("'", "''")
+
+
+def _rate_class(rate):
+    try:
+        rate = float(rate)
+    except (TypeError, ValueError):
+        return "medium"
+    if rate >= 100:
+        return "low"
+    if rate >= 10:
+        return "medium"
+    return "high"
+
+
+def _load_saved_views():
+    if not os.path.exists(SAVED_VIEWS_FILE):
+        return []
+    try:
+        with open(SAVED_VIEWS_FILE, "r", encoding="utf-8") as f:
+            views = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return []
+    return views if isinstance(views, list) else []
+
+
+def _write_saved_views(views):
+    with open(SAVED_VIEWS_FILE, "w", encoding="utf-8") as f:
+        json.dump(views, f, indent=2)
+
+
+def _view_code(view):
+    payload = {
+        "label": str(view.get("label", "Saved view")),
+        "inf_type": str(view.get("inf_type", "")),
+        "economy": str(view.get("economy", "")),
+        "year": str(view.get("year", "")),
+    }
+    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _view_from_code(code):
+    if not code:
+        return None
+    try:
+        padded = code + "=" * (-len(code) % 4)
+        view = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+    except (ValueError, json.JSONDecodeError):
+        return None
+    if not isinstance(view, dict):
+        return None
+    required = ("inf_type", "economy", "year")
+    if not all(view.get(k) for k in required):
+        return None
+    return {
+        "label": str(view.get("label") or "Imported view"),
+        "inf_type": str(view["inf_type"]),
+        "economy": str(view["economy"]),
+        "year": str(view["year"]),
+    }
+
+
 def get_page_html(form_data):
     def _get(key, default=""):
         v = form_data.get(key)
@@ -675,8 +747,6 @@ def get_page_html(form_data):
     {filter_tags}
     <span class="ready-badge">Ready</span>
     <span class="results-count">{cnt1} countries found</span>
-    <span class="results-sep">|</span>
-    <span class="results-note">Last updated WHO dataset 2000&#8211;2024</span>
 </div>
 
 <div class="saved-card">
