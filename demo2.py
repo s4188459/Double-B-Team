@@ -1,3 +1,10 @@
+import os
+import socketserver
+import sys
+
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import pyhtml
 import binh_level_1
 import binh_level_2
@@ -7,27 +14,21 @@ import bao_level_2
 import bao_level_3
 import nav
 
-#In the studio project, the other team members would have their pages imported like this.
-# import student_b_level_1
-# import student_b_level_2
-# import student_b_level_3
 
-# import student_c_level_1
-# import student_c_level_2
-# import student_c_level_3
+PORT = 8000
 
-pyhtml.need_debugging_help=True
+pyhtml.need_debugging_help = False
 
-#All pages that you want on the site need to be added as below
-pyhtml.MyRequestHandler.pages["/"]=binh_level_1; 
-pyhtml.MyRequestHandler.pages["/binh_page_2"]=binh_level_2; 
-pyhtml.MyRequestHandler.pages["/binh_page_3"]=binh_level_3; 
+pyhtml.MyRequestHandler.pages["/"] = binh_level_1
+pyhtml.MyRequestHandler.pages["/binh_page_2"] = binh_level_2
+pyhtml.MyRequestHandler.pages["/binh_page_3"] = binh_level_3
+pyhtml.MyRequestHandler.pages["/bao_page_1"] = bao_level_1
+pyhtml.MyRequestHandler.pages["/bao_page_2"] = bao_level_2
+pyhtml.MyRequestHandler.pages["/bao_page_3"] = bao_level_3
+pyhtml.MyRequestHandler.pages["/search"] = nav
 
-pyhtml.MyRequestHandler.pages["/bao_page_1"]=bao_level_1;
-pyhtml.MyRequestHandler.pages["/bao_page_2"]=bao_level_2;
-pyhtml.MyRequestHandler.pages["/bao_page_3"]=bao_level_3;
+socketserver.TCPServer.allow_reuse_address = True
 
-pyhtml.MyRequestHandler.pages["/search"]=nav;
-
-#Host the site!
-pyhtml.host_site()
+with socketserver.TCPServer(("", PORT), pyhtml.MyRequestHandler) as httpd:
+    print(f"Serving on http://localhost:{PORT}/")
+    httpd.serve_forever()
