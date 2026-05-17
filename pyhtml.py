@@ -35,7 +35,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 def host_site():
     # Set the port
-    PORT = 80
+    PORT = 8000
 
     # Create the HTTP server
     with socketserver.TCPServer(("", PORT), MyRequestHandler) as httpd:
