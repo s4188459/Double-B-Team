@@ -2,6 +2,7 @@ import os
 import re
 import pyhtml
 import nav
+import translations as tr_mod
 
 # fixed color palette — same vaccine family always gets the same color
 DISEASE_PALETTE = [
@@ -67,6 +68,10 @@ def get_page_html(form_data):
     )[0][0]
     stat4_doses = f"{raw_doses / 1_000_000_000:.1f}B"
 
+    lang     = (form_data.get("lang") or ["en"])[0]
+    tr_      = lambda k: tr_mod.get_translation(k, lang)
+    _dose_label = {1: tr_("dose_1st"), 2: tr_("dose_2nd"), 3: tr_("dose_3rd")}
+
     antigens = pyhtml.get_results_from_query(db, "SELECT AntigenID, name FROM Antigen ORDER BY AntigenID")
 
     # one card per antigen — colors reset each request so the palette stays consistent
@@ -74,7 +79,8 @@ def get_page_html(form_data):
     disease_cards_html = ""
     for antigen_id, full_name in antigens:
         abbr         = _antigen_abbr(antigen_id)
-        dose         = _antigen_dose(antigen_id)
+        m            = re.search(r'(\d+)$', antigen_id)
+        dose         = _dose_label.get(int(m.group(1)), _antigen_dose(antigen_id)) if m else ""
         display_name = _antigen_display_name(full_name)
         color        = _antigen_color(antigen_id)
         disease_cards_html += f"""
@@ -88,10 +94,11 @@ def get_page_html(form_data):
     with open(css_file, 'r', encoding='utf-8') as f:
         css = f.read()
 
-    nav_html = nav.get_nav_html("/")
+    ls       = f"?lang={lang}" if lang != "en" else ""
+    nav_html = nav.get_nav_html("/", lang=lang, form_data=form_data)
 
     page_html = f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}">
 <head>
     <title>ImmuniData - Home</title>
     <meta charset="UTF-8">
@@ -106,11 +113,11 @@ def get_page_html(form_data):
     <section class="hero">
         <div class="hero-overlay"></div>
         <div class="hero-content">
-            <h1 class="hero-title">Connecting the world<br>through reliable<br>vaccination data.</h1>
-            <p class="hero-desc">Discover insights on immunization coverage, disease<br>incidents and trends across countries, regions and<br>over time. Data from the World Health Organization<br>(2000 - 2024)</p>
+            <h1 class="hero-title">{tr_("home_hero_title")}</h1>
+            <p class="hero-desc">{tr_("home_hero_desc")}</p>
             <div class="hero-buttons">
-                <a href="/binh_page_2" class="btn-primary">Explore the Data &rarr;</a>
-                <a href="/bao_page_1" class="btn-outline">Learn More <img src="/images/iconinfo.png" alt="info" class="btn-icon"></a>
+                <a href="/binh_page_2{ls}" class="btn-primary">{tr_("home_btn_explore")} &rarr;</a>
+                <a href="/bao_page_1{ls}" class="btn-outline">{tr_("home_btn_learn")} <img src="/images/iconinfo.png" alt="info" class="btn-icon"></a>
             </div>
         </div>
     </section>
@@ -120,11 +127,11 @@ def get_page_html(form_data):
         <div class="snapshot-container">
 
             <div class="snapshot-header">
-                <h2 class="snapshot-title">Global Immunization Snapshot (2000 - 2024)</h2>
+                <h2 class="snapshot-title">{tr_("home_snapshot_title")}</h2>
                 <div class="methodology-wrapper">
                     <input type="checkbox" id="methodology-toggle" class="methodology-checkbox">
                     <label for="methodology-toggle" class="methodology-btn">
-                        View methodology
+                        {tr_("home_view_methodology")}
                         <img src="/images/iconinfo.png" alt="info" class="btn-icon">
                     </label>
                     <div class="methodology-popup">
@@ -143,8 +150,8 @@ def get_page_html(form_data):
                     <img src="/images/1st card.png" alt="Countries" class="card-icon">
                     <div class="card-info">
                         <div class="card-number">{stat1_countries}</div>
-                        <div class="card-label">Countries</div>
-                        <div class="card-desc">Across 7 global regions tracked (2000–2024)</div>
+                        <div class="card-label">{tr_("home_stat_countries_label")}</div>
+                        <div class="card-desc">{tr_("home_stat_countries_desc")}</div>
                     </div>
                 </div>
 
@@ -152,8 +159,8 @@ def get_page_html(form_data):
                     <img src="/images/2nd card.png" alt="Average Coverage" class="card-icon">
                     <div class="card-info">
                         <div class="card-number">{stat2_coverage}</div>
-                        <div class="card-label">Average Coverage</div>
-                        <div class="card-desc">Across 5 antigens and 217 countries (2000–2024)</div>
+                        <div class="card-label">{tr_("home_stat_coverage_label")}</div>
+                        <div class="card-desc">{tr_("home_stat_coverage_desc")}</div>
                     </div>
                 </div>
 
@@ -161,8 +168,8 @@ def get_page_html(form_data):
                     <img src="/images/3rd card.png" alt="High Coverage Countries" class="card-icon">
                     <div class="card-info">
                         <div class="card-number">{stat3_high_coverage}</div>
-                        <div class="card-label">Countries</div>
-                        <div class="card-desc">Achieved &ge;90% coverage across ALL antigens in 2024</div>
+                        <div class="card-label">{tr_("home_stat_countries_label")}</div>
+                        <div class="card-desc">{tr_("home_stat_high_cov_desc")}</div>
                     </div>
                 </div>
 
@@ -170,8 +177,8 @@ def get_page_html(form_data):
                     <img src="/images/4th card.png" alt="Doses" class="card-icon">
                     <div class="card-info">
                         <div class="card-number">{stat4_doses}</div>
-                        <div class="card-label">Doses</div>
-                        <div class="card-desc">Recorded across 5 antigens over 25 years</div>
+                        <div class="card-label">{tr_("home_stat_doses_label")}</div>
+                        <div class="card-desc">{tr_("home_stat_doses_desc")}</div>
                     </div>
                 </div>
 
@@ -181,13 +188,13 @@ def get_page_html(form_data):
 
     <!-- Disease Covered -->
     <section class="disease-section">
-        <h2 class="disease-title">Disease Covered</h2>
+        <h2 class="disease-title">{tr_("home_disease_title")}</h2>
         <div class="disease-grid">
             {disease_cards_html}
         </div>
     </section>
 
-    {nav.get_footer_html()}
+    {nav.get_footer_html(lang)}
 
 
 </body>

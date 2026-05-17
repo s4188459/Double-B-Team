@@ -1,6 +1,7 @@
 import os
 import pyhtml
 import nav
+import translations as tr
 
 # About / Mission Statement page
 def get_page_html(form_data):
@@ -8,11 +9,13 @@ def get_page_html(form_data):
     with open(css_file, 'r', encoding='utf-8') as f:
         css = f.read()
 
-    nav_html    = nav.get_nav_html("/bao_page_1")
-    footer_html = nav.get_footer_html()
+    lang        = (form_data.get("lang") or ["en"])[0]
+    tr_         = lambda k: tr.get_translation(k, lang)
+    nav_html    = nav.get_nav_html("/bao_page_1", lang=lang, form_data=form_data)
+    footer_html = nav.get_footer_html(lang)
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}">
 <head>
     <title>ImmuniData - About</title>
     <meta charset="UTF-8">
@@ -26,9 +29,9 @@ def get_page_html(form_data):
     <main class="mission-page">
         <section class="mission-section">
             <div class="mission-copy">
-                <h1>Our Vision</h1>
-                <p>ImmuniData exists to make preventable disease and immunisation data easier to understand, compare and act on. We want public health evidence to be accessible to students, analysts, policy teams and communities without requiring specialised tools.</p>
-                <p>Our mission is to turn large vaccination and infection datasets into clear views that support better decisions, stronger awareness and more equitable health outcomes.</p>
+                <h1>{tr_("about_vision_title")}</h1>
+                <p>{tr_("about_vision_p1")}</p>
+                <p>{tr_("about_vision_p2")}</p>
             </div>
             <div class="mission-image-placeholder" aria-label="Image placeholder for mission statement">
                 <div class="placeholder-art"></div>
@@ -40,44 +43,44 @@ def get_page_html(form_data):
                 <div class="placeholder-art"></div>
             </div>
             <div class="mission-copy">
-                <h2>User-Friendly Approach</h2>
-                <p>We focus on clean navigation, useful filters and readable summaries so users can move from a broad global picture to a specific country, region, disease or economic context.</p>
-                <p>Every page is designed to reduce confusion: clear labels, consistent tables and practical comparisons help users find patterns without losing sight of the people behind the data.</p>
+                <h2>{tr_("about_approach_title")}</h2>
+                <p>{tr_("about_approach_p1")}</p>
+                <p>{tr_("about_approach_p2")}</p>
             </div>
         </section>
 
         <section class="personas-section">
             <div class="section-divider"></div>
-            <h2>Who Are We Helping?</h2>
+            <h2>{tr_("about_who_title")}</h2>
             <div class="persona-module">
                 <input type="radio" id="persona-1" name="persona-view" class="persona-radio" checked>
                 <input type="radio" id="persona-2" name="persona-view" class="persona-radio">
 
                 <div class="persona-tab-bar">
-                    <label for="persona-1" class="persona-tab persona-tab-1">Persona 1</label>
-                    <label for="persona-2" class="persona-tab persona-tab-2">Persona 2</label>
+                    <label for="persona-1" class="persona-tab persona-tab-1">{tr_("persona_1_tab")}</label>
+                    <label for="persona-2" class="persona-tab persona-tab-2">{tr_("persona_2_tab")}</label>
                 </div>
 
                 <div class="persona-panel persona-panel-1">
-                    <h3>Public Health Learners and Researchers</h3>
+                    <h3>{tr_("persona_1_title")}</h3>
                     <div class="persona-copy">
-                        <p>Students, educators and early-stage researchers need a reliable way to explore how vaccination coverage, disease incidence and economic indicators relate across places and years.</p>
+                        <p>{tr_("persona_1_p")}</p>
                         <ul class="persona-list">
-                            <li>Compare vaccination and infection trends without manually cleaning raw datasets.</li>
-                            <li>Identify countries or regions that meet coverage targets or show signs of improvement.</li>
-                            <li>Use simple, transparent views for assignments, reports and evidence-based discussion.</li>
+                            <li>{tr_("persona_1_li1")}</li>
+                            <li>{tr_("persona_1_li2")}</li>
+                            <li>{tr_("persona_1_li3")}</li>
                         </ul>
                     </div>
                 </div>
 
                 <div class="persona-panel persona-panel-2">
-                    <h3>Policy Planners and Community Advocates</h3>
+                    <h3>{tr_("persona_2_title")}</h3>
                     <div class="persona-copy">
-                        <p>Health program planners and community advocates need clear evidence to explain where preventable disease risks remain high and where immunisation progress needs support.</p>
+                        <p>{tr_("persona_2_p")}</p>
                         <ul class="persona-list">
-                            <li>Review trends by region, country and economic context to support practical recommendations.</li>
-                            <li>Spot underserved areas where vaccination coverage may not be keeping pace with public health targets.</li>
-                            <li>Use accessible summaries when preparing briefings, outreach materials or stakeholder discussions.</li>
+                            <li>{tr_("persona_2_li1")}</li>
+                            <li>{tr_("persona_2_li2")}</li>
+                            <li>{tr_("persona_2_li3")}</li>
                         </ul>
                     </div>
                 </div>
@@ -85,14 +88,14 @@ def get_page_html(form_data):
         </section>
 
         <section class="about-us-section">
-            <h2>About Us</h2>
+            <h2>{tr_("about_us_title")}</h2>
             <div class="about-content">
                 <div class="about-image-placeholder" aria-label="Image placeholder for about us">
                     <div class="placeholder-art"></div>
                 </div>
                 <div class="about-us-copy">
-                    <p>We are a student project team building ImmuniData as a practical data explorer for preventable disease information. Our work brings together public datasets, simple interaction design and focused analysis pages.</p>
-                    <p>The goal is to help users ask better questions about immunisation progress, disease burden and the social conditions that shape health outcomes.</p>
+                    <p>{tr_("about_us_p1")}</p>
+                    <p>{tr_("about_us_p2")}</p>
                 </div>
             </div>
         </section>

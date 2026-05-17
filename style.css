@@ -48,6 +48,13 @@ a {
     margin: 0 14px;
 }
 
+.top-bar a.active-lang {
+    font-weight: 800;
+    color: #1a5fa0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
 /* ══════════════════════════════
    MAIN HEADER
 ══════════════════════════════ */
