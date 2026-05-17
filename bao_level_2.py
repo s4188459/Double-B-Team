@@ -1,12 +1,11 @@
-import base64
-import json
 import os
+import sqlite3
 import urllib.parse
 import pyhtml
 import nav
 
 ROWS_PER_PAGE = 10
-SAVED_VIEWS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bao_level_2_saved_views.json")
+SAVED_VIEWS_TABLE = "BaoLevel2SavedViews"
 
 
 def _esc(s):
@@ -31,48 +30,60 @@ def _rate_class(v):
     return "cov-high"
 
 
-def _load_saved_views():
-    if not os.path.exists(SAVED_VIEWS_FILE):
-        return []
-    try:
-        with open(SAVED_VIEWS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, list) else []
-    except:
-        return []
+def _ensure_saved_views_table(db):
+    with sqlite3.connect(db) as conn:
+        conn.execute(f"""
+            CREATE TABLE IF NOT EXISTS {SAVED_VIEWS_TABLE} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                label TEXT NOT NULL,
+                inf_type TEXT NOT NULL,
+                economy TEXT NOT NULL,
+                year TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(inf_type, economy, year)
+            )
+        """)
 
 
-def _write_saved_views(views):
-    with open(SAVED_VIEWS_FILE, "w", encoding="utf-8") as f:
-        json.dump(views, f, indent=2)
-
-
-def _view_code(view):
-    payload = {
-        "label": view.get("label", "Shared view"),
-        "inf_type": view.get("inf_type", ""),
-        "economy": str(view.get("economy", "")),
-        "year": str(view.get("year", "")),
-    }
-    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
-
-
-def _view_from_code(code):
-    try:
-        padded = code.strip() + ("=" * (-len(code.strip()) % 4))
-        payload = json.loads(base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8"))
-        view = {
-            "label": str(payload.get("label") or "Shared view").strip(),
-            "inf_type": str(payload.get("inf_type") or "").strip(),
-            "economy": str(payload.get("economy") or "").strip(),
-            "year": str(payload.get("year") or "").strip(),
+def _load_saved_views(db):
+    _ensure_saved_views_table(db)
+    with sqlite3.connect(db) as conn:
+        rows = conn.execute(f"""
+            SELECT id, label, inf_type, economy, year
+            FROM {SAVED_VIEWS_TABLE}
+            ORDER BY id DESC
+        """).fetchall()
+    return [
+        {
+            "id": str(view_id),
+            "label": label,
+            "inf_type": inf_type,
+            "economy": economy,
+            "year": year,
         }
-        if view["inf_type"] and view["economy"].isdigit() and view["year"].isdigit():
-            return view
-    except:
-        pass
-    return None
+        for view_id, label, inf_type, economy, year in rows
+    ]
+
+
+def _add_saved_view(db, view):
+    _ensure_saved_views_table(db)
+    with sqlite3.connect(db) as conn:
+        cur = conn.execute(f"""
+            INSERT OR IGNORE INTO {SAVED_VIEWS_TABLE} (label, inf_type, economy, year)
+            VALUES (?, ?, ?, ?)
+        """, (
+            view["label"],
+            view["inf_type"],
+            str(view["economy"]),
+            str(view["year"]),
+        ))
+        return cur.rowcount > 0
+
+
+def _delete_saved_view(db, view_id):
+    _ensure_saved_views_table(db)
+    with sqlite3.connect(db) as conn:
+        conn.execute(f"DELETE FROM {SAVED_VIEWS_TABLE} WHERE id = ?", (view_id,))
 
 
 def get_page_html(form_data):
@@ -103,34 +114,12 @@ def get_page_html(form_data):
     applied_year_f = _get("applied_year", year_f)
 
     saved_message = ""
-    saved_views = _load_saved_views()
+    saved_views = _load_saved_views(db)
     delete_view_f = _get("delete_view")
     if delete_view_f.isdigit():
-        delete_idx = int(delete_view_f)
-        if 0 <= delete_idx < len(saved_views):
-            saved_views.pop(delete_idx)
-            _write_saved_views(saved_views)
-            saved_message = '<span class="saved-message">Deleted</span>'
-
-    imported_view = _view_from_code(_get("import_view_code"))
-    if imported_view:
-        inf_f = applied_inf_f = imported_view["inf_type"]
-        economy_f = applied_economy_f = imported_view["economy"]
-        year_f = applied_year_f = imported_view["year"]
-        exists = any(
-            v.get("inf_type") == imported_view["inf_type"]
-            and str(v.get("economy")) == imported_view["economy"]
-            and str(v.get("year")) == imported_view["year"]
-            for v in saved_views
-        )
-        if not exists:
-            saved_views.append(imported_view)
-            _write_saved_views(saved_views)
-            saved_message = '<span class="saved-message">Imported</span>'
-        else:
-            saved_message = '<span class="saved-message">Already saved</span>'
-    elif _get("import_view_code"):
-        saved_message = '<span class="saved-message error">Invalid code</span>'
+        _delete_saved_view(db, delete_view_f)
+        saved_views = _load_saved_views(db)
+        saved_message = '<span class="saved-message">Deleted</span>'
 
     try:
         page1 = max(1, int(_get("page1", "1")))
@@ -318,15 +307,8 @@ def get_page_html(form_data):
             "economy": applied_economy_f,
             "year": applied_year_f,
         }
-        exists = any(
-            v.get("inf_type") == new_view["inf_type"]
-            and str(v.get("economy")) == str(new_view["economy"])
-            and str(v.get("year")) == str(new_view["year"])
-            for v in saved_views
-        )
-        if not exists:
-            saved_views.append(new_view)
-            _write_saved_views(saved_views)
+        if _add_saved_view(db, new_view):
+            saved_views = _load_saved_views(db)
             saved_message = '<span class="saved-message">Saved</span>'
         else:
             saved_message = '<span class="saved-message">Already saved</span>'
@@ -507,15 +489,13 @@ def get_page_html(form_data):
 
     if saved_views:
         saved_parts = []
-        for i, v in enumerate(saved_views):
+        for v in saved_views:
             if not (v.get("inf_type") and v.get("economy") and v.get("year")):
                 continue
-            code = _view_code(v)
             saved_parts.append(
                 f'<div class="saved-view-item">'
                 f'<a class="saved-pill" href="{apply_url(v.get("inf_type", ""), v.get("economy", ""), v.get("year", ""))}">{_html(v.get("label", "Saved view"))}</a>'
-                f'<input class="view-code-input" type="text" readonly value="{_html(code)}" aria-label="Share code for {_html(v.get("label", "Saved view"))}">'
-                f'<a class="saved-action" href="/bao_page_2?delete_view={i}">Delete</a>'
+                f'<a class="saved-action" href="/bao_page_2?delete_view={_html(v.get("id", ""))}">Delete</a>'
                 f'</div>'
             )
         saved_html = "".join(saved_parts)
@@ -563,19 +543,6 @@ def get_page_html(form_data):
         border-radius: 8px;
         padding: 6px;
     }
-    .view-code-input {
-        border: 1px solid #d0d4da;
-        border-radius: 6px;
-        padding: 6px 8px;
-        font-size: 11px;
-        width: 150px;
-        color: #555;
-        background: #fff;
-    }
-    .view-code-input:focus {
-        border-color: #1a7cd4;
-        outline: none;
-    }
     .saved-action {
         color: #b91c1c;
         font-size: 12px;
@@ -618,42 +585,6 @@ def get_page_html(form_data):
         font-size: 12px;
         font-weight: 700;
     }
-    .saved-message.error {
-        color: #b91c1c;
-        background: #fee2e2;
-        border-color: #fca5a5;
-    }
-    .import-view-form {
-        margin: 0 65px 20px;
-        background: #fff;
-        border: 1.5px solid #e0e4ea;
-        border-radius: 10px;
-        padding: 14px 18px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        box-shadow: 0 1px 5px rgba(0,0,0,0.04);
-    }
-    .import-view-label { font-size: 13px; font-weight: 800; color: #111; }
-    .import-code-input {
-        flex: 1;
-        min-width: 260px;
-        border: 1.5px solid #d0d4da;
-        border-radius: 7px;
-        padding: 8px 10px;
-        font-size: 12px;
-    }
-    .import-code-btn {
-        background: #1a7cd4;
-        color: #fff;
-        border-radius: 7px;
-        padding: 8px 13px;
-        font-size: 12px;
-        font-weight: 700;
-        cursor: pointer;
-    }
-    .import-code-btn:hover { background: #155fa8; }
     .empty-saved-note { color: #888; font-size: 12px; }
     .how-card { justify-content: space-between; margin-top: 0; }
     .how-copy { display: flex; align-items: flex-start; gap: 10px; }
@@ -682,7 +613,7 @@ def get_page_html(form_data):
     }
     .how-hover:hover .how-hover-panel { display: block; }
     @media (max-width: 900px) {
-        .saved-card, .how-card, .import-view-form { margin-left: 24px; margin-right: 24px; }
+        .saved-card, .how-card { margin-left: 24px; margin-right: 24px; }
         .save-view-form { margin-left: 0; width: 100%; }
         .how-card { align-items: flex-start; }
         .how-links { align-items: flex-start; }
@@ -769,12 +700,6 @@ def get_page_html(form_data):
         {saved_message}
     </form>
 </div>
-
-<form method="GET" action="/bao_page_2" class="import-view-form">
-    <span class="import-view-label">Paste view code:</span>
-    <input type="text" name="import_view_code" class="import-code-input" placeholder="Paste a shared saved-view code">
-    <button type="submit" class="import-code-btn">Save from code</button>
-</form>
 
 <div class="tables-row">
     <div class="table-card">
