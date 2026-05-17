@@ -30,23 +30,7 @@ def _rate_class(v):
     return "cov-high"
 
 
-def _ensure_saved_views_table(db):
-    with sqlite3.connect(db) as conn:
-        conn.execute(f"""
-            CREATE TABLE IF NOT EXISTS {SAVED_VIEWS_TABLE} (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                label TEXT NOT NULL,
-                inf_type TEXT NOT NULL,
-                economy TEXT NOT NULL,
-                year TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(inf_type, economy, year)
-            )
-        """)
-
-
 def _load_saved_views(db):
-    _ensure_saved_views_table(db)
     with sqlite3.connect(db) as conn:
         rows = conn.execute(f"""
             SELECT id, label, inf_type, economy, year
@@ -66,7 +50,6 @@ def _load_saved_views(db):
 
 
 def _add_saved_view(db, view):
-    _ensure_saved_views_table(db)
     with sqlite3.connect(db) as conn:
         cur = conn.execute(f"""
             INSERT OR IGNORE INTO {SAVED_VIEWS_TABLE} (label, inf_type, economy, year)
@@ -81,7 +64,6 @@ def _add_saved_view(db, view):
 
 
 def _delete_saved_view(db, view_id):
-    _ensure_saved_views_table(db)
     with sqlite3.connect(db) as conn:
         conn.execute(f"DELETE FROM {SAVED_VIEWS_TABLE} WHERE id = ?", (view_id,))
 
@@ -96,6 +78,8 @@ def get_page_html(form_data):
     inf_opts = pyhtml.get_results_from_query(db, "SELECT id, description FROM Infection_Type ORDER BY description")
     economy_opts = pyhtml.get_results_from_query(db, "SELECT economyID, phase FROM Economy ORDER BY economyID")
     year_opts = pyhtml.get_results_from_query(db, "SELECT DISTINCT year FROM InfectionData ORDER BY year DESC")
+    db_min_year = str(year_opts[-1][0]) if year_opts else "2000"
+    db_max_year = str(year_opts[0][0]) if year_opts else "2024"
 
     default_inf = inf_opts[0][0] if inf_opts else ""
     default_economy = str(economy_opts[2][0]) if len(economy_opts) >= 3 else (str(economy_opts[0][0]) if economy_opts else "")
@@ -508,118 +492,6 @@ def get_page_html(form_data):
         saved_html = "".join(f'<a class="saved-pill starter" href="{href}">{_html(label)}</a>' for label, href in starter_views)
         saved_html += '<span class="empty-saved-note">Starter examples appear until you save your own view.</span>'
 
-    page_extra_css = """
-    .saved-card, .how-card {
-        margin: 0 65px 20px;
-        background: #fff;
-        border: 1.5px solid #e0e4ea;
-        border-radius: 10px;
-        padding: 14px 18px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        box-shadow: 0 1px 5px rgba(0,0,0,0.04);
-    }
-    .saved-label, .how-title { font-size: 13px; font-weight: 800; color: #111; }
-    .saved-pill {
-        background: #b3d4f5;
-        color: #1a5fa0;
-        border-radius: 6px;
-        padding: 7px 12px;
-        font-size: 12px;
-        font-weight: 700;
-        text-decoration: none;
-    }
-    .saved-pill:hover { background: #1a7cd4; color: #fff; }
-    .saved-pill.starter { background: #d8eafa; color: #1a5fa0; }
-    .saved-view-item {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-        background: #f8faff;
-        border: 1px solid #e0e4ea;
-        border-radius: 8px;
-        padding: 6px;
-    }
-    .saved-action {
-        color: #b91c1c;
-        font-size: 12px;
-        font-weight: 700;
-        padding: 5px 7px;
-        border-radius: 6px;
-    }
-    .saved-action:hover { background: #fee2e2; }
-    .save-view-form {
-        margin-left: auto;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-    .save-view-input {
-        border: 1.5px solid #d0d4da;
-        border-radius: 7px;
-        padding: 7px 10px;
-        font-size: 12px;
-        min-width: 180px;
-    }
-    .save-view-btn {
-        background: #fff;
-        color: #1a7cd4;
-        border: 1.5px solid #1a7cd4;
-        border-radius: 7px;
-        padding: 7px 12px;
-        font-size: 12px;
-        font-weight: 700;
-        cursor: pointer;
-    }
-    .save-view-btn:hover { background: #f0f6ff; }
-    .saved-message {
-        color: #1a7a4a;
-        background: #e6faf0;
-        border: 1px solid #6fcf97;
-        border-radius: 20px;
-        padding: 3px 10px;
-        font-size: 12px;
-        font-weight: 700;
-    }
-    .empty-saved-note { color: #888; font-size: 12px; }
-    .how-card { justify-content: space-between; margin-top: 0; }
-    .how-copy { display: flex; align-items: flex-start; gap: 10px; }
-    .how-copy .info-icon-img { margin-top: 2px; }
-    .how-text { display: flex; flex-direction: column; gap: 3px; }
-    .how-text p { font-size: 12px; color: #555; line-height: 1.45; }
-    .how-links { display: flex; flex-direction: column; gap: 7px; align-items: flex-end; }
-    .how-link { color: #1a7cd4; font-size: 12px; font-weight: 700; }
-    .how-link:hover { text-decoration: underline; }
-    .how-hover { position: relative; }
-    .how-hover-panel {
-        display: none;
-        position: absolute;
-        right: 0;
-        bottom: calc(100% + 8px);
-        width: 320px;
-        background: #fff;
-        border: 1px solid #d8e2ef;
-        border-radius: 8px;
-        padding: 12px 14px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.14);
-        color: #444;
-        font-size: 12px;
-        line-height: 1.5;
-        z-index: 50;
-    }
-    .how-hover:hover .how-hover-panel { display: block; }
-    @media (max-width: 900px) {
-        .saved-card, .how-card { margin-left: 24px; margin-right: 24px; }
-        .save-view-form { margin-left: 0; width: 100%; }
-        .how-card { align-items: flex-start; }
-        .how-links { align-items: flex-start; }
-    }
-    """
-
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "style.css")
     with open(css_file, "r", encoding="utf-8") as f:
         css = f.read()
@@ -633,7 +505,7 @@ def get_page_html(form_data):
     <title>ImmuniData - Infection Data by Economic Status Explorer</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>{css}{page_extra_css}</style>
+    <style>{css}</style>
 </head>
 <body>
 
@@ -651,7 +523,7 @@ def get_page_html(form_data):
         <div class="filter-group"><label>Year</label>{sel_year()}</div>
         <div class="filter-group"><label>Sort by</label>{sel_sort()}</div>
 
-        <form method="GET" action="/bao_page_2" style="display:contents">
+        <form method="GET" action="/bao_page_2" class="form-contents">
             <input type="hidden" name="inf_type" value="{_html(inf_f)}">
             <input type="hidden" name="economy" value="{_html(economy_f)}">
             <input type="hidden" name="year" value="{_html(year_f)}">
@@ -677,7 +549,7 @@ def get_page_html(form_data):
     <span class="ready-badge">Ready</span>
     <span class="results-count">{cnt1} countries found</span>
     <span class="results-sep">|</span>
-    <span class="results-note">Last updated WHO dataset 2000&#8211;2024</span>
+    <span class="results-note">Last updated WHO dataset {db_min_year}&#8211;{db_max_year}</span>
 </div>
 
 <div class="saved-card">

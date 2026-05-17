@@ -1,9 +1,20 @@
 import os
+import sqlite3
 import urllib.parse
 import pyhtml
 import nav
 
 ROWS_PER_PAGE = 10
+SAVED_VIEWS_TABLE = "BinhLevel3SavedViews"
+
+
+def _html(s):
+    return (str(s if s is not None else "")
+            .replace("&", "&amp;")
+            .replace('"', "&quot;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;"))
+
 
 # basic SQL escaping to prevent injection in filter queries
 def _esc(s):
@@ -21,6 +32,35 @@ def _delta_class(v):
     if v > 0:  return "delta-pos"
     if v < 0:  return "delta-neg"
     return "delta-zero"
+
+
+def _load_saved_views(db):
+    with sqlite3.connect(db) as conn:
+        rows = conn.execute(f"""
+            SELECT id, label, antigen, start_year, end_year, top
+            FROM {SAVED_VIEWS_TABLE}
+            ORDER BY id DESC
+        """).fetchall()
+    return [
+        {"id": str(r[0]), "label": r[1], "antigen": r[2],
+         "start_year": r[3], "end_year": r[4], "top": r[5]}
+        for r in rows
+    ]
+
+
+def _add_saved_view(db, view):
+    with sqlite3.connect(db) as conn:
+        cur = conn.execute(f"""
+            INSERT OR IGNORE INTO {SAVED_VIEWS_TABLE} (label, antigen, start_year, end_year, top)
+            VALUES (?, ?, ?, ?, ?)
+        """, (view["label"], view["antigen"],
+               view["start_year"], view["end_year"], view.get("top", "10")))
+        return cur.rowcount > 0
+
+
+def _delete_saved_view(db, view_id):
+    with sqlite3.connect(db) as conn:
+        conn.execute(f"DELETE FROM {SAVED_VIEWS_TABLE} WHERE id = ?", (view_id,))
 
 
 def get_page_html(form_data):
@@ -46,10 +86,20 @@ def get_page_html(form_data):
 
     db = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'immunisation.db')
 
+    saved_message = ""
+    saved_views = _load_saved_views(db)
+    delete_view_f = _get("delete_view")
+    if delete_view_f.isdigit():
+        _delete_saved_view(db, delete_view_f)
+        saved_views = _load_saved_views(db)
+        saved_message = '<span class="saved-message">Deleted</span>'
+
     antigen_opts = pyhtml.get_results_from_query(db,
         "SELECT AntigenID, name FROM Antigen ORDER BY AntigenID")
     year_opts = pyhtml.get_results_from_query(db,
         "SELECT DISTINCT year FROM Vaccination ORDER BY year DESC")
+    db_min_year = str(year_opts[-1][0]) if year_opts else "2000"
+    db_max_year = str(year_opts[0][0]) if year_opts else "2024"
 
     try: start_y = int(start_year_f)
     except: start_y = 2000
@@ -178,6 +228,56 @@ def get_page_html(form_data):
     # thin wrapper so year dropdown links preserve antigen/top/sort state
     def cascade_year_url(start_year, end_year):
         return url(start_year=str(start_year), end_year=str(end_year), page="1")
+
+    def apply_url(antigen, start_year, end_year, top="10"):
+        qs = urllib.parse.urlencode({
+            "antigen": antigen,
+            "start_year": start_year,
+            "end_year": end_year,
+            "top": top,
+            "applied_antigen": antigen,
+            "applied_start_year": start_year,
+            "applied_end_year": end_year,
+            "applied_top": top,
+        })
+        return f"/binh_page_3?{qs}#results-section"
+
+    if _get("save_view") == "1" and table_active:
+        view_name = _get("view_name")
+        label = view_name if view_name else f"{antigen_display}, {applied_start_y} to {applied_end_y}, Top {applied_top_n}"
+        new_view = {
+            "label": label,
+            "antigen": applied_antigen_f,
+            "start_year": str(applied_start_y),
+            "end_year": str(applied_end_y),
+            "top": applied_top_f,
+        }
+        if _add_saved_view(db, new_view):
+            saved_views = _load_saved_views(db)
+            saved_message = '<span class="saved-message">Saved</span>'
+        else:
+            saved_message = '<span class="saved-message">Already saved</span>'
+
+    if saved_views:
+        saved_parts = []
+        for v in saved_views:
+            if not (v.get("antigen") and v.get("start_year") and v.get("end_year")): continue
+            link = apply_url(v["antigen"], v["start_year"], v["end_year"], v.get("top", "10"))
+            saved_parts.append(
+                f'<div class="saved-view-item">'
+                f'<a class="saved-pill" href="{link}">{_html(v.get("label", ""))}</a>'
+                f'<a class="saved-action" href="/binh_page_3?delete_view={v["id"]}">Delete</a>'
+                f'</div>'
+            )
+        saved_html = "".join(saved_parts)
+    else:
+        starter_views = [
+            ("BCG, 2000 to 2024, Top 10", apply_url("BCG", "2000", "2024", "10")),
+            ("DTP3, 2010 to 2024, Top 10", apply_url("DTP3", "2010", "2024", "10")),
+            ("MCV1, 2000 to 2024, Top 20", apply_url("MCV1", "2000", "2024", "20")),
+        ]
+        saved_html = "".join(f'<a class="saved-pill starter" href="{href}">{_html(label)}</a>' for label, href in starter_views)
+        saved_html += '<span class="empty-saved-note">Starter examples appear until you save your own view.</span>'
 
     filter_tags = ""
     if applied_antigen_f:
@@ -426,7 +526,7 @@ def get_page_html(form_data):
         <div class="filter-group"><label>Sort by</label>{sel_sort()}</div>
 
         <!-- Apply Filters: hidden fields preserve current params when submitted -->
-        <form method="GET" action="/binh_page_3" style="display:contents">
+        <form method="GET" action="/binh_page_3" class="form-contents">
             <input type="hidden" name="antigen"             value="{antigen_f}">
             <input type="hidden" name="start_year"          value="{start_y}">
             <input type="hidden" name="end_year"            value="{end_y}">
@@ -457,7 +557,28 @@ def get_page_html(form_data):
     <span class="ready-badge">Ready</span>
     <span class="results-count">{n_total} countries with data in both years</span>
     <span class="results-sep">|</span>
-    <span class="results-note">Last updated WHO dataset 2000&#8211;2024</span>
+    <span class="results-note">Last updated WHO dataset {db_min_year}&#8211;{db_max_year}</span>
+</div>
+
+<div class="saved-card">
+    <span class="saved-label">Saved views:</span>
+    {saved_html}
+    <form method="GET" action="/binh_page_3" class="save-view-form">
+        <input type="hidden" name="antigen"              value="{_html(antigen_f)}">
+        <input type="hidden" name="start_year"           value="{start_y}">
+        <input type="hidden" name="end_year"             value="{end_y}">
+        <input type="hidden" name="top"                  value="{_html(top_f)}">
+        <input type="hidden" name="sort"                 value="{_html(sort_f)}">
+        <input type="hidden" name="t3_view"              value="{_html(t3_view_f)}">
+        <input type="hidden" name="applied_antigen"      value="{_html(applied_antigen_f)}">
+        <input type="hidden" name="applied_start_year"   value="{applied_start_y}">
+        <input type="hidden" name="applied_end_year"     value="{applied_end_y}">
+        <input type="hidden" name="applied_top"          value="{_html(applied_top_f)}">
+        <input type="hidden" name="save_view"            value="1">
+        <input type="text"   name="view_name"            class="save-view-input" placeholder="Optional view name">
+        <button type="submit" class="save-view-btn">Save current view</button>
+        {saved_message}
+    </form>
 </div>
 
 <div class="single-table-wrap">
@@ -491,6 +612,23 @@ def get_page_html(form_data):
     {applied_start_y} and {applied_end_y} are included.
     <strong>Vaccination Rate = doses administered &divide; total country population &times; 100</strong>.
     Increase = End Year Rate &minus; Start Year Rate (percentage points).</span>
+</div>
+
+<div class="how-card">
+    <div class="how-copy">
+        <img src="/images/iconinfo.png" class="info-icon-img" alt="">
+        <div class="how-text">
+            <span class="how-title">How This View Works?</span>
+            <p>Select an antigen, start year, and end year. Use Table or Chart to identify countries with the biggest vaccination rate improvement over time.</p>
+        </div>
+    </div>
+    <div class="how-links">
+        <span class="how-hover">
+            <a href="#" class="how-link">View methodology -&gt;</a>
+            <span class="how-hover-panel">Vaccination Rate = doses administered / country population x 100. Increase = End Year Rate - Start Year Rate (percentage points). Only countries with data in both the start and end year are included in results.</span>
+        </span>
+        <a href="#" class="how-link">Data Dictionary -&gt;</a>
+    </div>
 </div>
 
 {footer_html}

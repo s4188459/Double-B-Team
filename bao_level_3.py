@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import urllib.parse
 
 import nav
@@ -6,6 +7,7 @@ import pyhtml
 
 
 ROWS_PER_PAGE = 10
+SAVED_VIEWS_TABLE = "BaoLevel3SavedViews"
 
 
 def _html(value):
@@ -38,6 +40,35 @@ def _rate_class(rate):
     return "cov-high"
 
 
+def _load_saved_views(db):
+    with sqlite3.connect(db) as conn:
+        rows = conn.execute(f"""
+            SELECT id, label, inf_type, economy, start_year, end_year, top
+            FROM {SAVED_VIEWS_TABLE}
+            ORDER BY id DESC
+        """).fetchall()
+    return [
+        {"id": str(r[0]), "label": r[1], "inf_type": r[2],
+         "economy": r[3], "start_year": r[4], "end_year": r[5], "top": r[6]}
+        for r in rows
+    ]
+
+
+def _add_saved_view(db, view):
+    with sqlite3.connect(db) as conn:
+        cur = conn.execute(f"""
+            INSERT OR IGNORE INTO {SAVED_VIEWS_TABLE} (label, inf_type, economy, start_year, end_year, top)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (view["label"], view["inf_type"], view["economy"],
+               view["start_year"], view["end_year"], view.get("top", "10")))
+        return cur.rowcount > 0
+
+
+def _delete_saved_view(db, view_id):
+    with sqlite3.connect(db) as conn:
+        conn.execute(f"DELETE FROM {SAVED_VIEWS_TABLE} WHERE id = ?", (view_id,))
+
+
 def get_page_html(form_data):
     def _get(key, default=""):
         v = form_data.get(key)
@@ -45,9 +76,19 @@ def get_page_html(form_data):
 
     db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database", "immunisation.db")
 
+    saved_message = ""
+    saved_views = _load_saved_views(db)
+    delete_view_f = _get("delete_view")
+    if delete_view_f.isdigit():
+        _delete_saved_view(db, delete_view_f)
+        saved_views = _load_saved_views(db)
+        saved_message = '<span class="saved-message">Deleted</span>'
+
     inf_opts = pyhtml.get_results_from_query(db, "SELECT id, description FROM Infection_Type ORDER BY description")
     economy_opts = pyhtml.get_results_from_query(db, "SELECT economyID, phase FROM Economy ORDER BY economyID")
     year_opts = pyhtml.get_results_from_query(db, "SELECT DISTINCT year FROM InfectionData ORDER BY year DESC")
+    db_min_year = str(year_opts[-1][0]) if year_opts else "2000"
+    db_max_year = str(year_opts[0][0]) if year_opts else "2024"
 
     default_inf = inf_opts[0][0] if inf_opts else ""
     default_economy = str(economy_opts[2][0]) if len(economy_opts) >= 3 else (str(economy_opts[0][0]) if economy_opts else "")
@@ -452,71 +493,43 @@ def get_page_html(form_data):
     else:
         t3_panel_content = inactive_msg()
 
-    starter_views = [
-        ("Measles, Lower Middle, 2000 to 2024", apply_url("MEA", "3", "2000", "2024", "10")),
-        ("Rubella, High Income, 2000 to 2024", apply_url("RUB", "1", "2000", "2024", "10")),
-        ("Pertussis, Low Income, 2010 to 2024", apply_url("PER", "4", "2010", "2024", "10")),
-    ]
-    saved_html = "".join(f'<a class="saved-pill starter" href="{href}">{_html(label)}</a>' for label, href in starter_views)
+    if _get("save_view") == "1" and table_active:
+        view_name = _get("view_name")
+        label = view_name if view_name else f"{disease_display}, {economy_display}, {applied_start_y} to {applied_end_y}, Top {applied_top_n}"
+        new_view = {
+            "label": label,
+            "inf_type": applied_inf_f,
+            "economy": applied_economy_f,
+            "start_year": str(applied_start_y),
+            "end_year": str(applied_end_y),
+            "top": applied_top_f,
+        }
+        if _add_saved_view(db, new_view):
+            saved_views = _load_saved_views(db)
+            saved_message = '<span class="saved-message">Saved</span>'
+        else:
+            saved_message = '<span class="saved-message">Already saved</span>'
 
-    page_extra_css = """
-    .saved-card, .how-card {
-        margin: 0 65px 20px;
-        background: #fff;
-        border: 1.5px solid #e0e4ea;
-        border-radius: 10px;
-        padding: 14px 18px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        box-shadow: 0 1px 5px rgba(0,0,0,0.04);
-    }
-    .saved-label, .how-title { font-size: 13px; font-weight: 800; color: #111; }
-    .saved-pill {
-        background: #b3d4f5;
-        color: #1a5fa0;
-        border-radius: 6px;
-        padding: 7px 12px;
-        font-size: 12px;
-        font-weight: 700;
-        text-decoration: none;
-    }
-    .saved-pill:hover { background: #1a7cd4; color: #fff; }
-    .saved-pill.starter { background: #d8eafa; color: #1a5fa0; }
-    .case-delta { color: #666; font-size: 11px; margin-left: 4px; }
-    .how-card { justify-content: space-between; margin-top: 0; }
-    .how-copy { display: flex; align-items: flex-start; gap: 10px; }
-    .how-copy .info-icon-img { margin-top: 2px; }
-    .how-text { display: flex; flex-direction: column; gap: 3px; }
-    .how-text p { font-size: 12px; color: #555; line-height: 1.45; }
-    .how-links { display: flex; flex-direction: column; gap: 7px; align-items: flex-end; }
-    .how-link { color: #1a7cd4; font-size: 12px; font-weight: 700; }
-    .how-link:hover { text-decoration: underline; }
-    .how-hover { position: relative; }
-    .how-hover-panel {
-        display: none;
-        position: absolute;
-        right: 0;
-        bottom: calc(100% + 8px);
-        width: 340px;
-        background: #fff;
-        border: 1px solid #d8e2ef;
-        border-radius: 8px;
-        padding: 12px 14px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.14);
-        color: #444;
-        font-size: 12px;
-        line-height: 1.5;
-        z-index: 50;
-    }
-    .how-hover:hover .how-hover-panel { display: block; }
-    @media (max-width: 900px) {
-        .saved-card, .how-card { margin-left: 24px; margin-right: 24px; }
-        .how-card { align-items: flex-start; }
-        .how-links { align-items: flex-start; }
-    }
-    """
+    if saved_views:
+        saved_parts = []
+        for v in saved_views:
+            if not (v.get("inf_type") and v.get("economy") and v.get("start_year") and v.get("end_year")): continue
+            link = apply_url(v["inf_type"], v["economy"], v["start_year"], v["end_year"], v.get("top", "10"))
+            saved_parts.append(
+                f'<div class="saved-view-item">'
+                f'<a class="saved-pill" href="{link}">{_html(v.get("label", ""))}</a>'
+                f'<a class="saved-action" href="/bao_page_3?delete_view={v["id"]}">Delete</a>'
+                f'</div>'
+            )
+        saved_html = "".join(saved_parts)
+    else:
+        starter_views = [
+            ("Measles, Lower Middle, 2000 to 2024", apply_url("MEA", "3", "2000", "2024", "10")),
+            ("Rubella, High Income, 2000 to 2024", apply_url("RUB", "1", "2000", "2024", "10")),
+            ("Pertussis, Low Income, 2010 to 2024", apply_url("PER", "4", "2010", "2024", "10")),
+        ]
+        saved_html = "".join(f'<a class="saved-pill starter" href="{href}">{_html(label)}</a>' for label, href in starter_views)
+        saved_html += '<span class="empty-saved-note">Starter examples appear until you save your own view.</span>'
 
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "style.css")
     with open(css_file, "r", encoding="utf-8") as f:
@@ -531,7 +544,7 @@ def get_page_html(form_data):
     <title>ImmuniData - Infection Improvement by Economic Status Explorer</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>{css}{page_extra_css}</style>
+    <style>{css}</style>
 </head>
 <body>
 
@@ -551,7 +564,7 @@ def get_page_html(form_data):
         <div class="filter-group"><label>Top</label>{sel_top()}</div>
         <div class="filter-group"><label>Sort by</label>{sel_sort()}</div>
 
-        <form method="GET" action="/bao_page_3" style="display:contents">
+        <form method="GET" action="/bao_page_3" class="form-contents">
             <input type="hidden" name="inf_type" value="{_html(inf_f)}">
             <input type="hidden" name="economy" value="{_html(economy_f)}">
             <input type="hidden" name="start_year" value="{start_y}">
@@ -578,11 +591,31 @@ def get_page_html(form_data):
     {filter_tags}
     <span class="ready-badge">Ready</span>
     <span class="results-count">{n_total} countries with data in both years</span>
+    <span class="results-sep">|</span>
+    <span class="results-note">Last updated WHO dataset {db_min_year}&#8211;{db_max_year}</span>
 </div>
 
 <div class="saved-card">
-    <span class="saved-label">Starter views:</span>
+    <span class="saved-label">Saved views:</span>
     {saved_html}
+    <form method="GET" action="/bao_page_3" class="save-view-form">
+        <input type="hidden" name="inf_type"          value="{_html(inf_f)}">
+        <input type="hidden" name="economy"           value="{_html(economy_f)}">
+        <input type="hidden" name="start_year"        value="{start_y}">
+        <input type="hidden" name="end_year"          value="{end_y}">
+        <input type="hidden" name="top"               value="{_html(top_f)}">
+        <input type="hidden" name="sort"              value="{_html(sort_f)}">
+        <input type="hidden" name="t3_view"           value="{_html(t3_view_f)}">
+        <input type="hidden" name="applied_inf_type"  value="{_html(applied_inf_f)}">
+        <input type="hidden" name="applied_economy"   value="{_html(applied_economy_f)}">
+        <input type="hidden" name="applied_start_year" value="{applied_start_y}">
+        <input type="hidden" name="applied_end_year"  value="{applied_end_y}">
+        <input type="hidden" name="applied_top"       value="{_html(applied_top_f)}">
+        <input type="hidden" name="save_view"         value="1">
+        <input type="text"   name="view_name"         class="save-view-input" placeholder="Optional view name">
+        <button type="submit" class="save-view-btn">Save current view</button>
+        {saved_message}
+    </form>
 </div>
 
 <div class="single-table-wrap">
