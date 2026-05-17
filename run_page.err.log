@@ -1,0 +1,10 @@
+127.0.0.1 - - [17/May/2026 09:11:19] "GET /bao_page_3 HTTP/1.1" 200 -
+127.0.0.1 - - [17/May/2026 09:12:43] "GET /bao_page_2?import_view_code=eyJsYWJlbCI6Ik1lYXNsZXMsIEhpZ2ggSW5jb21lLCAyMDI0IiwiaW5mX3R5cGUiOiJNRUEiLCJlY29ub215IjoiMSIsInllYXIiOiIyMDI0In0 HTTP/1.1" 200 -
+127.0.0.1 - - [17/May/2026 09:12:44] "GET /images/dropdown%20icon.png HTTP/1.1" 304 -
+127.0.0.1 - - [17/May/2026 09:12:45] "GET /bao_page_3 HTTP/1.1" 200 -
+127.0.0.1 - - [17/May/2026 15:06:58] "GET /bao_page_3 HTTP/1.1" 200 -
+127.0.0.1 - - [17/May/2026 15:07:30] "GET /bao_page_3 HTTP/1.1" 200 -
+127.0.0.1 - - [17/May/2026 15:07:30] "GET /images/dropdown%20icon.png HTTP/1.1" 304 -
+127.0.0.1 - - [17/May/2026 15:07:33] "GET /binh_page_3 HTTP/1.1" 200 -
+127.0.0.1 - - [17/May/2026 15:07:35] "GET /binh_page_2 HTTP/1.1" 200 -
+127.0.0.1 - - [17/May/2026 15:07:37] "GET /bao_page_2 HTTP/1.1" 200 -
