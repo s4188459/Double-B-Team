@@ -203,9 +203,16 @@ def get_page_html(form_data):
             {join_sql}
             ORDER BY {order_expr}
             LIMIT {applied_top_n}""")
+        # chart always sorted by improvement DESC — ORDER BY done in SQL, not Python
+        chart_rows = pyhtml.get_results_from_query(db, f"""
+            SELECT {select_cols}
+            {join_sql}
+            ORDER BY (e.coverage - s.coverage) DESC
+            LIMIT {applied_top_n}""")
     else:
-        n_total  = 0
-        top_rows = []
+        n_total    = 0
+        top_rows   = []
+        chart_rows = []
 
     # paginate within the already-limited top_rows slice
     cnt         = len(top_rows)
@@ -447,12 +454,11 @@ def get_page_html(form_data):
         title = f'<div class="table-header-row"><span class="table-title">{title_text}</span></div>'
         if not table_active:
             return title + inactive_msg()
-        if len(top_rows) < 2:
+        if len(chart_rows) < 2:
             return title + '<div class="chart-msg">Not enough data — need at least 2 countries to display a chart</div>'
-        sorted_rows = sorted(top_rows, key=lambda r: r[4] if r[4] is not None else 0, reverse=True)
-        max_abs = max(abs(r[4] or 0) for r in sorted_rows) or 1
+        max_abs = max(abs(r[4] or 0) for r in chart_rows) or 1
         out = ""
-        for i, (cname, rname, start_r, end_r, delta) in enumerate(sorted_rows):
+        for i, (cname, rname, start_r, end_r, delta) in enumerate(chart_rows):
             d = delta or 0
             w = round(abs(d) / max_abs * 100, 1)
             if d > 0:

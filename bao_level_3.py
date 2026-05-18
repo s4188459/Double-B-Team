@@ -204,8 +204,9 @@ def get_page_html(form_data):
               AND p.population > 0
         )"""
 
-    rows_all = []
-    n_total = 0
+    rows_all   = []
+    chart_rows = []
+    n_total    = 0
     if table_active:
         inner = f"""
             SELECT c.name AS country_name,
@@ -227,6 +228,13 @@ def get_page_html(form_data):
             SELECT *
             FROM ({inner})
             ORDER BY {order_by}
+            LIMIT {applied_top_n}
+        """)
+        # chart always sorted by improvement DESC — ORDER BY done in SQL, not Python
+        chart_rows = pyhtml.get_results_from_query(db, f"""
+            SELECT *
+            FROM ({inner})
+            ORDER BY improvement DESC
             LIMIT {applied_top_n}
         """)
 
@@ -446,12 +454,11 @@ def get_page_html(form_data):
         title = f'<div class="table-header-row"><span class="table-title">{title_text}</span></div>'
         if not table_active:
             return title + inactive_msg()
-        if len(rows_all) < 2:
+        if len(chart_rows) < 2:
             return title + '<div class="chart-msg">Not enough country data to display a chart.</div>'
-        sorted_rows = sorted(rows_all, key=lambda r: r[6] if r[6] is not None else 0, reverse=True)
-        max_abs = max(abs(r[6] or 0) for r in sorted_rows) or 1
+        max_abs = max(abs(r[6] or 0) for r in chart_rows) or 1
         out = ""
-        for i, (country, _, _, _, _, _, improvement, _) in enumerate(sorted_rows):
+        for i, (country, _, _, _, _, _, improvement, _) in enumerate(chart_rows):
             value = improvement or 0
             width = round(abs(value) / max_abs * 100, 1)
             if value > 0:
