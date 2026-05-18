@@ -1,9 +1,20 @@
 import os
+import sqlite3
 import urllib.parse
 import pyhtml
 import nav
+import translations as tr
 
 ROWS_PER_PAGE = 10
+SAVED_VIEWS_TABLE = "BinhLevel2SavedViews"
+
+
+def _html(s):
+    return (str(s if s is not None else "")
+            .replace("&", "&amp;")
+            .replace('"', "&quot;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;"))
 
 
 # basic SQL escaping to prevent injection in filter queries
@@ -19,10 +30,45 @@ def _cov_class(v):
     return "cov-high" if v >= 90 else ("cov-mid" if v >= 70 else "cov-low")
 
 
+def _load_saved_views(db):
+    with sqlite3.connect(db) as conn:
+        rows = conn.execute(f"""
+            SELECT id, label, antigen, year, region, country
+            FROM {SAVED_VIEWS_TABLE}
+            ORDER BY id DESC
+        """).fetchall()
+    return [
+        {"id": str(r[0]), "label": r[1], "antigen": r[2],
+         "year": r[3], "region": r[4], "country": r[5]}
+        for r in rows
+    ]
+
+
+def _add_saved_view(db, view):
+    with sqlite3.connect(db) as conn:
+        cur = conn.execute(f"""
+            INSERT OR IGNORE INTO {SAVED_VIEWS_TABLE} (label, antigen, year, region, country)
+            VALUES (?, ?, ?, ?, ?)
+        """, (view["label"], view["antigen"], view["year"],
+               view.get("region", ""), view.get("country", "")))
+        return cur.rowcount > 0
+
+
+def _delete_saved_view(db, view_id):
+    with sqlite3.connect(db) as conn:
+        conn.execute(f"DELETE FROM {SAVED_VIEWS_TABLE} WHERE id = ?", (view_id,))
+
+
 def get_page_html(form_data):
     def _get(key, default=""):
         v = form_data.get(key)
         return (v[0] if v else default).strip()
+
+    lang = _get("lang", "en")
+    tr_ = lambda k: tr.get_translation(k, lang)
+    db_tr = lambda v, t: tr.get_db_translation(v, lang, t)
+    lang_param = f'<input type="hidden" name="lang" value="{lang}">' if lang != "en" else ""
+    reset_href = f"/binh_page_2{'?lang=' + lang if lang != 'en' else ''}"
 
     # region/country only control the dropdown UI and cascade — tables ignore them until Apply is clicked
     region_f  = _get("region")
@@ -48,8 +94,18 @@ def get_page_html(form_data):
 
     db = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'immunisation.db')
 
+    saved_message = ""
+    saved_views = _load_saved_views(db)
+    delete_view_f = _get("delete_view")
+    if delete_view_f.isdigit():
+        _delete_saved_view(db, delete_view_f)
+        saved_views = _load_saved_views(db)
+        saved_message = '<span class="saved-message">Deleted</span>'
+
     antigen_opts = pyhtml.get_results_from_query(db, "SELECT AntigenID, name FROM Antigen ORDER BY AntigenID")
     year_opts    = pyhtml.get_results_from_query(db, "SELECT DISTINCT year FROM Vaccination ORDER BY year DESC")
+    db_min_year  = str(year_opts[-1][0]) if year_opts else "2000"
+    db_max_year  = str(year_opts[0][0]) if year_opts else "2024"
     region_opts  = pyhtml.get_results_from_query(db, "SELECT RegionID, region FROM Region ORDER BY region")
 
     # if a country is selected, look up its region so the region dropdown stays in sync
@@ -105,12 +161,12 @@ def get_page_html(form_data):
         "region_desc":   "r.region DESC",
     }
     SORT_LABELS = {
-        "coverage_desc": "% of Target (High→Low)",
-        "coverage_asc":  "% of Target (Low→High)",
-        "country_asc":   "Country (A→Z)",
-        "country_desc":  "Country (Z→A)",
-        "region_asc":    "Region (A→Z)",
-        "region_desc":   "Region (Z→A)",
+        "coverage_desc": tr_("sort_target_hl"),
+        "coverage_asc":  tr_("sort_target_lh"),
+        "country_asc":   tr_("sort_country_az"),
+        "country_desc":  tr_("sort_country_za"),
+        "region_asc":    tr_("sort_region_az"),
+        "region_desc":   tr_("sort_region_za"),
     }
     order_by = SORT_MAP.get(sort_f, "ROUND(AVG(v.coverage),1) DESC")
 
@@ -154,9 +210,11 @@ def get_page_html(form_data):
 
     def inactive_msg():
         missing = []
-        if not applied_antigen_f: missing.append("an <strong>Antigen</strong>")
-        if not (applied_year_f and applied_year_f.isdigit()): missing.append("a <strong>Year</strong>")
-        return f'<div class="chart-msg">Please select {" and ".join(missing)} then click <strong>Apply Filters</strong> to view this data</div>'
+        if not applied_antigen_f: missing.append(f"<strong>{tr_('inactive_an_antigen')}</strong>")
+        if not (applied_year_f and applied_year_f.isdigit()): missing.append(f"<strong>{tr_('inactive_a_year')}</strong>")
+        parts = f" {tr_('inactive_and')} ".join(missing)
+        suffix = tr_("inactive_apply_suffix").format(f"<strong>{tr_('btn_apply')}</strong>")
+        return f'<div class="chart-msg">{tr_("inactive_select")} {parts} {suffix}</div>'
 
     # Table 1: countries that hit ≥90% coverage — GROUP BY + AVG handles duplicate rows
     t1_inner = f"""
@@ -296,9 +354,64 @@ def get_page_html(form_data):
         if t2_view_f == "chart": p["t2_view"] = t2_view_f
         p["page1"] = str(page1)
         p["page2"] = str(page2)
+        if lang != "en":
+            p["lang"] = lang
         p.update(kw)
         qs = "&".join(f"{k}={v}" for k, v in p.items() if v)
         return f"/binh_page_2?{qs}" if qs else "/binh_page_2"
+
+    def apply_url(antigen, year, region="", country=""):
+        p = {"antigen": antigen, "year": year,
+             "applied_antigen": antigen, "applied_year": year}
+        if region:  p["region"] = region;   p["applied_region"] = region
+        if country: p["country"] = country; p["applied_country"] = country
+        if lang != "en": p["lang"] = lang
+        return f"/binh_page_2?{urllib.parse.urlencode(p)}"
+
+    if _get("save_view") == "1" and applied_antigen_f and applied_year_f:
+        view_name = _get("view_name")
+        if not view_name:
+            parts = [applied_antigen_f, applied_year_f]
+            if applied_region_f:
+                rn = next((rn for rid, rn in region_opts if str(rid) == str(applied_region_f)), applied_region_f)
+                parts.append(rn)
+            if applied_country_f:
+                _cn = pyhtml.get_results_from_query(db,
+                    f"SELECT name FROM Country WHERE CountryID = '{_esc(applied_country_f)}'")
+                parts.append(_cn[0][0] if _cn else applied_country_f)
+            view_name = ", ".join(parts)
+        new_view = {
+            "label": view_name, "antigen": applied_antigen_f,
+            "year": applied_year_f, "region": applied_region_f or "",
+            "country": applied_country_f or "",
+        }
+        if _add_saved_view(db, new_view):
+            saved_views = _load_saved_views(db)
+            saved_message = f'<span class="saved-message">{tr_("saved_msg")}</span>'
+        else:
+            saved_message = f'<span class="saved-message">{tr_("already_saved_msg")}</span>'
+
+    if saved_views:
+        saved_parts = []
+        for v in saved_views:
+            if not (v.get("antigen") and v.get("year")): continue
+            link = apply_url(v["antigen"], v["year"], v.get("region", ""), v.get("country", ""))
+            del_href = f'/binh_page_2?delete_view={v["id"]}{("&lang=" + lang) if lang != "en" else ""}'
+            saved_parts.append(
+                f'<div class="saved-view-item">'
+                f'<a class="saved-pill" href="{link}">{_html(v.get("label", ""))}</a>'
+                f'<a class="saved-action" href="{del_href}">{tr_("delete")}</a>'
+                f'</div>'
+            )
+        saved_html = "".join(saved_parts)
+    else:
+        starter_views = [
+            ("BCG, 2022", apply_url("BCG", "2022")),
+            ("DTP3, 2020", apply_url("DTP3", "2020")),
+            ("MCV1, 2015", apply_url("MCV1", "2015")),
+        ]
+        saved_html = "".join(f'<a class="saved-pill starter" href="{href}">{_html(label)}</a>' for label, href in starter_views)
+        saved_html += f'<span class="empty-saved-note">{tr_("starter_note")}</span>'
 
     # filter tags shown in the results bar — reflect applied_* not the dropdown UI state
     filter_tags = ""
@@ -315,11 +428,11 @@ def get_page_html(form_data):
         cn = _cn_row[0][0] if _cn_row else applied_country_f
         filter_tags += f'<span class="filter-tag">{cn}</span> '
     if not filter_tags:
-        filter_tags = '<span style="color:#777;font-size:13px">All data</span> '
+        filter_tags = '<span class="filter-all-label">All data</span> '
 
     def sel_antigen():
-        label = antigen_f if antigen_f else "Select Antigen"
-        opts = f'<a href="{url(antigen="", page1="1", page2="1")}" class="{"selected" if not antigen_f else ""}">All Antigens</a>'
+        label = antigen_f if antigen_f else tr_("select_antigen")
+        opts = f'<a href="{url(antigen="", page1="1", page2="1")}" class="{"selected" if not antigen_f else ""}">{tr_("all_antigens")}</a>'
         for aid, _ in antigen_opts:
             sc = "selected" if aid == antigen_f else ""
             opts += f'<a href="{url(antigen=aid, page1="1", page2="1")}" class="{sc}">{aid}</a>'
@@ -330,8 +443,8 @@ def get_page_html(form_data):
                 f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_year():
-        label = year_f if year_f else "Select Year"
-        opts = f'<a href="{url(year="", page1="1", page2="1")}" class="{"selected" if not year_f else ""}">All Years</a>'
+        label = year_f if year_f else tr_("select_year")
+        opts = f'<a href="{url(year="", page1="1", page2="1")}" class="{"selected" if not year_f else ""}">{tr_("all_years")}</a>'
         for (yr,) in year_opts:
             sc = "selected" if str(yr) == year_f else ""
             opts += f'<a href="{url(year=str(yr), page1="1", page2="1")}" class="{sc}">{yr}</a>'
@@ -345,12 +458,13 @@ def get_page_html(form_data):
         # region is locked to read-only when a country is already chosen
         if country_f:
             rn = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), "All Regions")
-            return f'<div class="custom-select-locked">{rn}</div>'
-        label = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), "All Regions")
-        opts = f'<a href="{cascade_url()}" class="{"selected" if not region_f else ""}">All Regions</a>'
+            return f'<div class="custom-select-locked">{db_tr(rn, "region")}</div>'
+        raw_label = next((rn for rid, rn in region_opts if str(rid) == str(region_f)), None)
+        label = db_tr(raw_label, "region") if raw_label else tr_("all_regions")
+        opts = f'<a href="{cascade_url()}" class="{"selected" if not region_f else ""}">{tr_("all_regions")}</a>'
         for rid, rn in region_opts:
             sc = "selected" if str(rid) == str(region_f) else ""
-            opts += f'<a href="{cascade_url(region=str(rid))}" class="{sc}">{rn.replace("&","&amp;")}</a>'
+            opts += f'<a href="{cascade_url(region=str(rid))}" class="{sc}">{db_tr(rn, "region").replace("&","&amp;")}</a>'
         return (f'<div class="custom-select css-dropdown">'
                 f'<input type="checkbox" id="dd-region" class="dd-toggle">'
                 f'<label for="dd-region" class="dd-backdrop"></label>'
@@ -482,8 +596,8 @@ def get_page_html(form_data):
 
     # vertical bar chart — one bar per region, height = number of countries that met the target
     def chart2_html():
-        title_text = (f"Region Summary of {antigen_display} in {applied_year_f}"
-                      if tables_active else "Region Summary")
+        title_text = (f"Table 2: Region Summary of {antigen_display} in {applied_year_f}"
+                      if tables_active else "Table 2: Region Summary")
         title = f'<div class="table-header-row"><span class="table-title">{title_text}</span></div>'
         if not tables_active:
             return title + inactive_msg()
@@ -536,7 +650,7 @@ def get_page_html(form_data):
             {paginate(page1, total_p1, "page1", cnt1)}"""
         t2_panel_content = f"""
             <div class="table-header-row">
-                <span class="table-title">Region Summary of {antigen_display} in {applied_year_f}</span>
+                <span class="table-title">Table 2: Region Summary of {antigen_display} in {applied_year_f}</span>
                 <a href="{export2_href}" download="vaccination_table2.xls" class="export-btn">
                     <img src="/images/export%20icon.png" alt=""> Export Data
                 </a>
@@ -554,20 +668,25 @@ def get_page_html(form_data):
             </div>
             {paginate(page2, total_p2, "page2", cnt2)}"""
     else:
-        t1_panel_content = inactive_msg()
-        t2_panel_content = inactive_msg()
+        t1_panel_content = (
+            f'<div class="table-header-row"><span class="table-title">Table 1: {_t1_title_base()}</span></div>'
+            + inactive_msg()
+        )
+        t2_panel_content = (
+            f'<div class="table-header-row"><span class="table-title">Table 2: Region Summary</span></div>'
+            + inactive_msg()
+        )
 
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
         css = f.read()
 
-    nav_html    = nav.get_nav_html("/binh_page_2")
-    footer_html = nav.get_footer_html()
+    nav_html    = nav.get_nav_html("/binh_page_2", lang=lang, form_data=form_data)
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}">
 <head>
-    <title>ImmuniData - Vaccination Data Explorer</title>
+    <title>ImmuniData - {tr_("page_vacc_explorer")}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>{css}</style>
@@ -577,22 +696,22 @@ def get_page_html(form_data):
 {nav_html}
 
 <div class="page-header">
-    <h1>Vaccination Data Explorer</h1>
-    <p>Explore vaccination rates and herd immunity levels by country and region</p>
+    <h1>{tr_("page_vacc_explorer")}</h1>
+    <p>{tr_("page_vacc_explorer_sub")}</p>
 </div>
 
 <div class="filter-card">
     <div class="filter-row">
 
         <!-- All dropdowns use instant navigation — selecting any option reloads immediately -->
-        <div class="filter-group"><label>Region</label>{sel_region()}</div>
-        <div class="filter-group"><label>Country</label>{sel_country()}</div>
-        <div class="filter-group"><label>Antigen</label>{sel_antigen()}</div>
-        <div class="filter-group"><label>Year</label>{sel_year()}</div>
-        <div class="filter-group"><label>Sort by</label>{sel_sort()}</div>
+        <div class="filter-group"><label>{tr_("filter_region")}</label>{sel_region()}</div>
+        <div class="filter-group"><label>{tr_("filter_country")}</label>{sel_country()}</div>
+        <div class="filter-group"><label>{tr_("filter_antigen")}</label>{sel_antigen()}</div>
+        <div class="filter-group"><label>{tr_("filter_year")}</label>{sel_year()}</div>
+        <div class="filter-group"><label>{tr_("filter_sort")}</label>{sel_sort()}</div>
 
         <!-- Apply Filters: applies region/country to tables; hidden fields preserve current params -->
-        <form method="GET" action="/binh_page_2" style="display:contents">
+        <form method="GET" action="/binh_page_2" class="form-contents">
             <input type="hidden" name="antigen"          value="{antigen_f}">
             <input type="hidden" name="year"             value="{year_f}">
             <input type="hidden" name="sort"             value="{sort_f}">
@@ -605,12 +724,13 @@ def get_page_html(form_data):
             <input type="hidden" name="applied_country"  value="{country_f}">
             <input type="hidden" name="t1_view"          value="{t1_view_f}">
             <input type="hidden" name="t2_view"          value="{t2_view_f}">
+            {lang_param}
             <div class="filter-actions">
                 <button type="submit" class="btn-apply">
-                    <img src="/images/filter%20icon.png" alt=""> Apply Filters
+                    <img src="/images/filter%20icon.png" alt=""> {tr_("btn_apply")}
                 </button>
-                <a href="/binh_page_2" class="btn-reset">
-                    <img src="/images/reset%20icon.png" alt=""> Reset
+                <a href="{reset_href}" class="btn-reset">
+                    <img src="/images/reset%20icon.png" alt=""> {tr_("btn_reset")}
                 </a>
             </div>
         </form>
@@ -620,12 +740,36 @@ def get_page_html(form_data):
 
 <div class="results-bar">
     <img src="/images/showing_result%20icon.png" class="results-icon" alt="">
-    <span class="results-label">Showing result for:</span>
+    <span class="results-label">{tr_("showing_result")}</span>
     {filter_tags}
     <span class="ready-badge">Ready</span>
-    <span class="results-count">{n_ctr} countries found</span>
+    <span class="results-count">{n_ctr} {tr_("countries_found")}</span>
     <span class="results-sep">|</span>
-    <span class="results-note">Last updated WHO dataset 2000&#8211;2024</span>
+    <span class="results-note">{tr_("last_updated")} {db_min_year}&#8211;{db_max_year}</span>
+</div>
+
+<div class="saved-card">
+    <span class="saved-label">{tr_("saved_views")}</span>
+    {saved_html}
+    <form method="GET" action="/binh_page_2" class="save-view-form">
+        <input type="hidden" name="antigen"          value="{_html(antigen_f)}">
+        <input type="hidden" name="year"             value="{_html(year_f)}">
+        <input type="hidden" name="region"           value="{_html(region_f)}">
+        <input type="hidden" name="country"          value="{_html(country_f)}">
+        <input type="hidden" name="sort"             value="{_html(sort_f)}">
+        <input type="hidden" name="sort2"            value="{_html(sort2_f)}">
+        <input type="hidden" name="applied_antigen"  value="{_html(applied_antigen_f)}">
+        <input type="hidden" name="applied_year"     value="{_html(applied_year_f)}">
+        <input type="hidden" name="applied_region"   value="{_html(applied_region_f)}">
+        <input type="hidden" name="applied_country"  value="{_html(applied_country_f)}">
+        <input type="hidden" name="t1_view"          value="{_html(t1_view_f)}">
+        <input type="hidden" name="t2_view"          value="{_html(t2_view_f)}">
+        <input type="hidden" name="save_view"        value="1">
+        {lang_param}
+        <input type="text"   name="view_name"        class="save-view-input" placeholder="{tr_("save_placeholder")}">
+        <button type="submit" class="save-view-btn">{tr_("save_view_btn")}</button>
+        {saved_message}
+    </form>
 </div>
 
 <div class="tables-row">
@@ -636,8 +780,8 @@ def get_page_html(form_data):
         <input type="radio" id="t1-chart" name="t1-view" {'checked' if t1_view_f == 'chart' else ''} class="tab-radio">
         <div class="tab-bar">
             <div class="tab-btn-group">
-                <a href="{url(t1_view='table')}" class="tab-btn t1-table-label"><img src="/images/table%20icon.png" alt=""> Table</a>
-                <a href="{url(t1_view='chart')}" class="tab-btn t1-chart-label"><img src="/images/chart%20icon.png" alt=""> Chart</a>
+                <a href="{url(t1_view='table')}" class="tab-btn t1-table-label"><img src="/images/table%20icon.png" alt=""> {tr_("tab_table")}</a>
+                <a href="{url(t1_view='chart')}" class="tab-btn t1-chart-label"><img src="/images/chart%20icon.png" alt=""> {tr_("tab_chart")}</a>
             </div>
         </div>
         <div class="t1-table-panel">
@@ -654,8 +798,8 @@ def get_page_html(form_data):
         <input type="radio" id="t2-chart" name="t2-view" {'checked' if t2_view_f == 'chart' else ''} class="tab-radio">
         <div class="tab-bar">
             <div class="tab-btn-group">
-                <a href="{url(t2_view='table')}" class="tab-btn t2-table-label"><img src="/images/table%20icon.png" alt=""> Table</a>
-                <a href="{url(t2_view='chart')}" class="tab-btn t2-chart-label"><img src="/images/chart%20icon.png" alt=""> Chart</a>
+                <a href="{url(t2_view='table')}" class="tab-btn t2-table-label"><img src="/images/table%20icon.png" alt=""> {tr_("tab_table")}</a>
+                <a href="{url(t2_view='chart')}" class="tab-btn t2-chart-label"><img src="/images/chart%20icon.png" alt=""> {tr_("tab_chart")}</a>
             </div>
         </div>
         <div class="t2-table-panel">
@@ -670,10 +814,27 @@ def get_page_html(form_data):
 
 <div class="info-note">
     <img src="/images/iconinfo.png" class="info-icon-img" alt="">
-    <span>Note: Tables update only when you click &#8220;Apply Filters&#8221;. Region &amp; Country dropdowns refresh instantly for cascade selection. Use &#8220;Reset&#8221; to clear all selections.</span>
+    <span>{tr_("info_note_vacc2")}</span>
 </div>
 
-{footer_html}
+<div class="how-card">
+    <div class="how-copy">
+        <img src="/images/iconinfo.png" class="info-icon-img" alt="">
+        <div class="how-text">
+            <span class="how-title">{tr_("how_works_title")}</span>
+            <p>{tr_("how_desc_vacc2")}</p>
+        </div>
+    </div>
+    <div class="how-links">
+        <span class="how-hover">
+            <a href="#" class="how-link">{tr_("how_view_methodology")} -&gt;</a>
+            <span class="how-hover-panel">{tr_("how_popup_vacc2")}</span>
+        </span>
+        <a href="#" class="how-link">{tr_("how_data_dict")} -&gt;</a>
+    </div>
+</div>
+
+{nav.get_footer_html(lang)}
 
 </body>
 </html>"""
