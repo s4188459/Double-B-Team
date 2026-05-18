@@ -495,7 +495,10 @@ def get_page_html(form_data):
             </div>
             {paginate()}"""
     else:
-        t3_panel_content = inactive_msg()
+        t3_panel_content = (
+            f'<div class="table-header-row"><span class="table-title">Top Countries by Vaccination Rate Increase</span></div>'
+            + inactive_msg()
+        )
 
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:

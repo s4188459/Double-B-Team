@@ -596,8 +596,8 @@ def get_page_html(form_data):
 
     # vertical bar chart — one bar per region, height = number of countries that met the target
     def chart2_html():
-        title_text = (f"Region Summary of {antigen_display} in {applied_year_f}"
-                      if tables_active else "Region Summary")
+        title_text = (f"Table 2: Region Summary of {antigen_display} in {applied_year_f}"
+                      if tables_active else "Table 2: Region Summary")
         title = f'<div class="table-header-row"><span class="table-title">{title_text}</span></div>'
         if not tables_active:
             return title + inactive_msg()
@@ -650,7 +650,7 @@ def get_page_html(form_data):
             {paginate(page1, total_p1, "page1", cnt1)}"""
         t2_panel_content = f"""
             <div class="table-header-row">
-                <span class="table-title">Region Summary of {antigen_display} in {applied_year_f}</span>
+                <span class="table-title">Table 2: Region Summary of {antigen_display} in {applied_year_f}</span>
                 <a href="{export2_href}" download="vaccination_table2.xls" class="export-btn">
                     <img src="/images/export%20icon.png" alt=""> Export Data
                 </a>
@@ -668,8 +668,14 @@ def get_page_html(form_data):
             </div>
             {paginate(page2, total_p2, "page2", cnt2)}"""
     else:
-        t1_panel_content = inactive_msg()
-        t2_panel_content = inactive_msg()
+        t1_panel_content = (
+            f'<div class="table-header-row"><span class="table-title">Table 1: {_t1_title_base()}</span></div>'
+            + inactive_msg()
+        )
+        t2_panel_content = (
+            f'<div class="table-header-row"><span class="table-title">Table 2: Region Summary</span></div>'
+            + inactive_msg()
+        )
 
     css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style.css')
     with open(css_file, 'r', encoding='utf-8') as f:
