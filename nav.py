@@ -1,6 +1,9 @@
 import os
 import re
+import urllib.parse
 import pyhtml
+import translations as tr
+from faq_widget import FAQChatWidget
 
 DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'immunisation.db')
 
@@ -16,20 +19,33 @@ _BREADCRUMBS = {
     "/bao_page_3":  [("Home", "/"), ("Data", None), ("Infection Improvement by Economic Status Explorer", None)],
 }
 
+# maps English breadcrumb labels to translation keys in translations.TRANSLATIONS
+_BREADCRUMB_KEY = {
+    "Home":                                                "bc_home",
+    "About":                                               "bc_about",
+    "Data":                                                "bc_data",
+    "Vaccination Data Explorer":                           "page_vacc_explorer",
+    "Vaccination Improvement Explorer":                    "page_vacc_improvement",
+    "Infection Data by Economic Status Explorer":          "page_inf_explorer",
+    "Infection Improvement by Economic Status Explorer":   "page_inf_improvement",
+}
+
 # renders the "Home > Data > Page Name" trail shown below the header
-def _build_breadcrumb(active_page):
+def _build_breadcrumb(active_page, lang="en", lang_suffix=""):
     crumbs = _BREADCRUMBS.get(active_page)
     if not crumbs:
         return ""
     parts = []
     for i, (label, href) in enumerate(crumbs):
         is_last = (i == len(crumbs) - 1)
+        translated = tr.get_translation(_BREADCRUMB_KEY.get(label, label), lang)
+        dest = (href + lang_suffix) if href and lang_suffix else href
         if is_last:
-            parts.append(f'<span class="breadcrumb-current">{label}</span>')
-        elif href:
-            parts.append(f'<a href="{href}" class="breadcrumb-link">{label}</a>')
+            parts.append(f'<span class="breadcrumb-current">{translated}</span>')
+        elif dest:
+            parts.append(f'<a href="{dest}" class="breadcrumb-link">{translated}</a>')
         else:
-            parts.append(f'<span class="breadcrumb-link">{label}</span>')
+            parts.append(f'<span class="breadcrumb-link">{translated}</span>')
         if not is_last:
             parts.append('<span class="breadcrumb-sep">&rsaquo;</span>')
     return f'<nav class="breadcrumb">{"".join(parts)}</nav>'
@@ -57,7 +73,10 @@ def _esc_sql(s):
     return s.replace("'", "''")
 
 # builds the full page header: language bar, logo, nav links, search box, and breadcrumb
-def get_nav_html(active_page="/"):
+# lang:      active language code ("en", "vi", "it", "fr", "de")
+# form_data: raw parse_qs dict from the current request — used to build language-switch URLs
+#            that preserve all current filter state when the user switches language
+def get_nav_html(active_page="/", lang="en", form_data=None):
     countries = pyhtml.get_results_from_query(DB, "SELECT CountryID, name FROM Country ORDER BY name")
     regions   = pyhtml.get_results_from_query(DB, "SELECT RegionID, region FROM Region ORDER BY region")
     antigens  = pyhtml.get_results_from_query(DB, "SELECT AntigenID, name FROM Antigen ORDER BY AntigenID")
@@ -83,35 +102,60 @@ def get_nav_html(active_page="/"):
         datalist_opts.append(f'<option value="{e} in Infection Improvement by Economic Status Explorer">')
     datalist_html = '\n'.join(datalist_opts)
 
+    # URL suffix to append when navigating to other pages so lang persists
+    lang_suffix = f"?lang={lang}" if lang and lang != "en" else ""
+
+    # language-switch URL: keeps all current filter params, replaces only lang
+    def lang_url(target_lang):
+        if form_data:
+            params = {k: v[0] for k, v in form_data.items() if v and k != "lang"}
+            if target_lang != "en":
+                params["lang"] = target_lang
+            qs = urllib.parse.urlencode(params)
+            return f"{active_page}?{qs}" if qs else active_page
+        if target_lang != "en":
+            return f"{active_page}?lang={target_lang}"
+        return active_page
+
+    # nav-link href: plain path + lang suffix for non-English
+    def nh(path):
+        return path + lang_suffix if lang_suffix else path
+
     # which nav item gets the active highlight based on the current page
     home_class  = "nav-link active" if active_page == "/" else "nav-link"
     about_class = "nav-link active" if active_page == "/bao_page_1" else "nav-link"
     data_class  = "nav-dropdown-toggle active" if active_page in _DATA_PAGES else "nav-dropdown-toggle"
 
-    # shorthand for dropdown items — adds active class when this is the current page
-    def _dd(href, label):
+    # shorthand for Data dropdown items — adds active class when this is the current page
+    def _dd(href, label_key):
         cls = ' class="active"' if active_page == href else ''
-        return f'<a href="{href}"{cls}>{label}</a>'
+        label = tr.get_translation(label_key, lang)
+        return f'<a href="{nh(href)}"{cls}>{label}</a>'
+
+    # language bar — active language gets .active-lang class
+    lang_items = []
+    for code, display in tr.LANGUAGES.items():
+        cls = ' class="active-lang"' if code == lang else ''
+        lang_items.append(f'<a href="{lang_url(code)}"{cls}>{display}</a>')
+    lang_bar = '<span class="divider">|</span>'.join(lang_items)
+
+    # translated labels
+    t_home      = tr.get_translation("nav_home",      lang)
+    t_about     = tr.get_translation("nav_about",     lang)
+    t_data      = tr.get_translation("nav_data",      lang)
+    t_search    = tr.get_translation("nav_search",    lang)
 
     return f"""
     <!-- Top language bar -->
     <div class="top-bar">
-        <a href="#">English</a>
-        <span class="divider">|</span>
-        <a href="#">Vietnamese</a>
-        <span class="divider">|</span>
-        <a href="#">Italian</a>
-        <span class="divider">|</span>
-        <a href="#">French</a>
-        <span class="divider">|</span>
-        <a href="#">German</a>
+        {lang_bar}
     </div>
 
     <!-- Main header -->
     <header class="main-header">
 
         <!-- Logo: far left -->
-        <a href="/" class="logo">
+        <a href="{nh("/")}" class="logo">
             <img src="/images/Logo.jpeg" alt="ImmuniData" height="110">
         </a>
 
@@ -119,27 +163,24 @@ def get_nav_html(active_page="/"):
         <div class="nav-search-group">
 
             <nav class="main-nav">
-                <a href="/" class="{home_class}">Home</a>
-                <a href="/bao_page_1" class="{about_class}">About</a>
+                <a href="{nh("/")}" class="{home_class}">{t_home}</a>
+                <a href="{nh("/bao_page_1")}" class="{about_class}">{t_about}</a>
 
                 <!-- Data dropdown -->
                 <div class="nav-dropdown-wrapper">
-                    <span class="{data_class}">Data &#9660;</span>
+                    <span class="{data_class}">{t_data} &#9660;</span>
                     <div class="dropdown-menu">
-                        {_dd("/binh_page_2", "Vaccination Data Explorer")}
-                        {_dd("/binh_page_3", "Vaccination Improvement Explorer")}
-                        {_dd("/bao_page_2", "Infection Data by Economic Status Explorer")}
-                        {_dd("/bao_page_3", "Infection Improvement by Economic Status Explorer")}
+                        {_dd("/binh_page_2", "page_vacc_explorer")}
+                        {_dd("/binh_page_3", "page_vacc_improvement")}
+                        {_dd("/bao_page_2",  "page_inf_explorer")}
+                        {_dd("/bao_page_3",  "page_inf_improvement")}
                     </div>
                 </div>
-
-                <a href="#" class="nav-link">Resources</a>
-                <a href="#" class="nav-link">Help</a>
             </nav>
 
             <!-- Search bar -->
             <form class="search-bar" method="GET" action="/search">
-                <input type="text" class="search-input" name="q" list="search-suggestions" autocomplete="off" placeholder="Search...">
+                <input type="text" class="search-input" name="q" list="search-suggestions" autocomplete="off" placeholder="{t_search}">
                 <button type="submit" class="search-btn">
                     <img src="/images/search_icon_landing_page.png" alt="Search" height="22" width="22">
                 </button>
@@ -151,19 +192,25 @@ def get_nav_html(active_page="/"):
         </div>
 
     </header>
-    {_build_breadcrumb(active_page)}"""
+    {_build_breadcrumb(active_page, lang, lang_suffix)}
+
+    {FAQChatWidget().render()}
+    """
 
 # static footer with brand info, quick links, and legal text
-def get_footer_html():
-    return """
+def get_footer_html(lang="en"):
+    t = lambda k: tr.get_translation(k, lang)
+    ls = f"?lang={lang}" if lang != "en" else ""
+
+    return f"""
     <!-- Footer -->
     <footer class="site-footer">
         <div class="footer-main">
 
             <!-- Brand column -->
             <div class="footer-brand">
-                <div class="footer-brand-title">Preventable Disease<br>Data Explorer</div>
-                <p class="footer-brand-desc">Exploring vaccination data to inform decisions and improve health outcomes worldwide</p>
+                <div class="footer-brand-title">{t("footer_brand_title")}</div>
+                <p class="footer-brand-desc">{t("footer_brand_desc")}</p>
                 <div class="footer-contacts">
                     <a href="mailto:ngodinhbinh1504@gmail.com" class="footer-contact-icon" title="Email">
                         <img src="/images/Mail icon.png" alt="Email">
@@ -182,40 +229,27 @@ def get_footer_html():
 
             <!-- About column -->
             <div class="footer-col">
-                <div class="footer-col-title">About</div>
-                <a href="/bao_page_1" class="footer-link">Mission Statement</a>
-                <a href="#" class="footer-link">Personas</a>
-                <a href="#" class="footer-link">Our Team</a>
+                <div class="footer-col-title">{t("footer_col_about")}</div>
+                <a href="/bao_page_1{ls}" class="footer-link">{t("footer_mission")}</a>
+                <a href="#" class="footer-link">{t("footer_personas")}</a>
+                <a href="#" class="footer-link">{t("footer_team")}</a>
             </div>
 
             <!-- Focus view column -->
             <div class="footer-col">
-                <div class="footer-col-title">Focus view</div>
-                <a href="/binh_page_2" class="footer-link">On Country &amp; Region</a>
-                <a href="/bao_page_2" class="footer-link">On Economic statistics</a>
+                <div class="footer-col-title">{t("footer_col_focus")}</div>
+                <a href="/binh_page_2{ls}" class="footer-link">{t("footer_country_region")}</a>
+                <a href="/bao_page_2{ls}" class="footer-link">{t("footer_economic")}</a>
             </div>
 
             <!-- In-depth analysis column -->
             <div class="footer-col">
-                <div class="footer-col-title">In-depth analysis</div>
-                <a href="/binh_page_3" class="footer-link">On Country &amp; Region</a>
-                <a href="/bao_page_3" class="footer-link">On Economic statistics</a>
+                <div class="footer-col-title">{t("footer_col_analysis")}</div>
+                <a href="/binh_page_3{ls}" class="footer-link">{t("footer_country_region")}</a>
+                <a href="/bao_page_3{ls}" class="footer-link">{t("footer_economic")}</a>
             </div>
 
-            <!-- Help column -->
-            <div class="footer-col">
-                <div class="footer-col-title">Help</div>
-                <a href="#" class="footer-link">FAQs</a>
-                <a href="#" class="footer-link">Contact Us</a>
-                <a href="#" class="footer-link">Feedback</a>
-            </div>
 
-        </div>
-
-        <div class="footer-bottom">
-            <a href="#" class="footer-legal">Privacy Policy</a>
-            <span class="footer-legal-divider">|</span>
-            <a href="#" class="footer-legal">Terms of Use</a>
         </div>
     </footer>"""
 

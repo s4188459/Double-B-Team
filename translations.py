@@ -1,0 +1,739 @@
+# Multi-language support for ImmuniData.
+# Add new languages by adding a code to LANGUAGES and a matching key in every dict.
+# DB-sourced values (economy, region, infection) use separate translation tables
+# so the actual database keys stay English while only the display label changes.
+
+# Supported languages: code → display name shown in the language bar
+LANGUAGES = {
+    "en": "English",
+    "vi": "Tiếng Việt",
+    "it": "Italiano",
+    "fr": "Français",
+    "de": "Deutsch",
+}
+
+# Static UI text.  Key → {lang_code: translated_string}
+# Missing language falls back to "en"; missing key returns the key itself.
+TRANSLATIONS = {
+
+    # ── Navigation ────────────────────────────────────────────────────────────
+    "nav_home":      {"en": "Home",      "vi": "Trang chủ",  "it": "Home",      "fr": "Accueil",   "de": "Startseite"},
+    "nav_about":     {"en": "About",     "vi": "Giới thiệu", "it": "Chi siamo", "fr": "À propos",  "de": "Über uns"},
+    "nav_data":      {"en": "Data",      "vi": "Dữ liệu",    "it": "Dati",      "fr": "Données",   "de": "Daten"},
+    "nav_resources": {"en": "Resources", "vi": "Tài nguyên", "it": "Risorse",   "fr": "Ressources","de": "Ressourcen"},
+    "nav_help":      {"en": "Help",      "vi": "Trợ giúp",   "it": "Aiuto",     "fr": "Aide",      "de": "Hilfe"},
+    "nav_search":    {"en": "Search...", "vi": "Tìm kiếm...", "it": "Cerca...", "fr": "Rechercher...","de": "Suchen..."},
+
+    # ── Page titles (Data dropdown + h1 headers) ───────────────────────────────
+    "page_vacc_explorer":    {
+        "en": "Vaccination Data Explorer",
+        "vi": "Khám phá dữ liệu tiêm chủng",
+        "it": "Esplora dati vaccinazioni",
+        "fr": "Explorateur de données vaccinales",
+        "de": "Impfdaten-Explorer",
+    },
+    "page_vacc_improvement": {
+        "en": "Vaccination Improvement Explorer",
+        "vi": "Khám phá cải thiện tiêm chủng",
+        "it": "Esplora miglioramenti vaccinazioni",
+        "fr": "Explorateur d'amélioration vaccinale",
+        "de": "Impfverbesserungs-Explorer",
+    },
+    "page_inf_explorer":     {
+        "en": "Infection Data by Economic Status Explorer",
+        "vi": "Khám phá dữ liệu nhiễm bệnh theo kinh tế",
+        "it": "Esplora dati infezioni per status economico",
+        "fr": "Explorateur d'infections par statut économique",
+        "de": "Infektionsdaten nach Wirtschaftsstatus",
+    },
+    "page_inf_improvement":  {
+        "en": "Infection Improvement by Economic Status Explorer",
+        "vi": "Khám phá cải thiện nhiễm bệnh theo kinh tế",
+        "it": "Esplora miglioramenti infezioni per economia",
+        "fr": "Explorateur d'amélioration des infections",
+        "de": "Infektionsverbesserung nach Wirtschaftsstatus",
+    },
+
+    # ── Page sub-descriptions ──────────────────────────────────────────────────
+    "page_vacc_explorer_sub": {
+        "en": "Explore vaccination coverage by country, region, antigen and year",
+        "vi": "Khám phá độ phủ tiêm chủng theo quốc gia, khu vực, kháng nguyên và năm",
+        "it": "Esplora la copertura vaccinale per paese, regione, antigene e anno",
+        "fr": "Explorez la couverture vaccinale par pays, région, antigène et année",
+        "de": "Impfabdeckung nach Land, Region, Antigen und Jahr erkunden",
+    },
+    "page_vacc_improvement_sub": {
+        "en": "Explore vaccination coverage improvement by country across a selected time range",
+        "vi": "Khám phá mức cải thiện độ phủ tiêm chủng theo quốc gia trong khoảng thời gian",
+        "it": "Esplora il miglioramento della copertura vaccinale per paese in un periodo",
+        "fr": "Explorez l'amélioration de la couverture vaccinale par pays sur une période",
+        "de": "Verbesserung der Impfabdeckung nach Land und Zeitraum erkunden",
+    },
+    "page_inf_explorer_sub": {
+        "en": "Explore infection rates and case totals for a selected infection type across countries within a chosen economic status",
+        "vi": "Khám phá tỷ lệ nhiễm bệnh và tổng số ca theo loại bệnh trong nhóm kinh tế",
+        "it": "Esplora tassi di infezione e totali per tipo di infezione e status economico",
+        "fr": "Explorez les taux d'infection et totaux de cas par type et statut économique",
+        "de": "Infektionsraten und Fallzahlen nach Wirtschaftsstatus erkunden",
+    },
+    "page_inf_improvement_sub": {
+        "en": "Explore improvement in infection rates across countries for a selected economic status and time range",
+        "vi": "Khám phá cải thiện tỷ lệ nhiễm bệnh theo nhóm kinh tế và khoảng thời gian",
+        "it": "Esplora il miglioramento dei tassi di infezione per status economico",
+        "fr": "Explorez l'amélioration des taux d'infection par statut économique",
+        "de": "Verbesserung der Infektionsraten nach Wirtschaftsstatus erkunden",
+    },
+
+    # ── Breadcrumbs ────────────────────────────────────────────────────────────
+    "bc_home":  {"en": "Home",  "vi": "Trang chủ",  "it": "Home",      "fr": "Accueil",  "de": "Startseite"},
+    "bc_about": {"en": "About", "vi": "Giới thiệu", "it": "Chi siamo", "fr": "À propos", "de": "Über uns"},
+    "bc_data":  {"en": "Data",  "vi": "Dữ liệu",    "it": "Dati",      "fr": "Données",  "de": "Daten"},
+
+    # ── Filter labels ──────────────────────────────────────────────────────────
+    "filter_antigen":        {"en": "Antigen",           "vi": "Kháng nguyên",       "it": "Antigene",            "fr": "Antigène",               "de": "Antigen"},
+    "filter_year":           {"en": "Year",              "vi": "Năm",                "it": "Anno",                "fr": "Année",                  "de": "Jahr"},
+    "filter_start_year":     {"en": "Start Year",        "vi": "Năm bắt đầu",        "it": "Anno inizio",         "fr": "Année de début",         "de": "Startjahr"},
+    "filter_end_year":       {"en": "End Year",          "vi": "Năm kết thúc",       "it": "Anno fine",           "fr": "Année de fin",           "de": "Endjahr"},
+    "filter_region":         {"en": "Region",            "vi": "Khu vực",            "it": "Regione",             "fr": "Région",                 "de": "Region"},
+    "filter_country":        {"en": "Country",           "vi": "Quốc gia",           "it": "Paese",               "fr": "Pays",                   "de": "Land"},
+    "filter_infection_type": {"en": "Infection Type",    "vi": "Loại bệnh",          "it": "Tipo di infezione",   "fr": "Type d'infection",       "de": "Infektionstyp"},
+    "filter_economy":        {"en": "Economic status",   "vi": "Tình trạng kinh tế", "it": "Status economico",    "fr": "Statut économique",      "de": "Wirtschaftsstatus"},
+    "filter_top":            {"en": "Top",               "vi": "Hàng đầu",           "it": "Top",                 "fr": "Top",                    "de": "Top"},
+    "filter_sort":           {"en": "Sort by",           "vi": "Sắp xếp theo",       "it": "Ordina per",          "fr": "Trier par",              "de": "Sortieren nach"},
+
+    # ── Dropdown placeholder options ───────────────────────────────────────────
+    "all_antigens":    {"en": "All Antigens",         "vi": "Tất cả kháng nguyên",   "it": "Tutti gli antigeni",   "fr": "Tous les antigènes",    "de": "Alle Antigene"},
+    "all_regions":     {"en": "All Regions",          "vi": "Tất cả khu vực",        "it": "Tutte le regioni",     "fr": "Toutes les régions",    "de": "Alle Regionen"},
+    "all_countries":   {"en": "All Countries",        "vi": "Tất cả quốc gia",       "it": "Tutti i paesi",        "fr": "Tous les pays",         "de": "Alle Länder"},
+    "all_years":       {"en": "All Years",            "vi": "Tất cả các năm",        "it": "Tutti gli anni",       "fr": "Toutes les années",     "de": "Alle Jahre"},
+    "all_data":        {"en": "All data",             "vi": "Tất cả dữ liệu",        "it": "Tutti i dati",         "fr": "Toutes les données",    "de": "Alle Daten"},
+    "select_antigen":  {"en": "Select Antigen",       "vi": "Chọn kháng nguyên",     "it": "Seleziona antigene",   "fr": "Sélectionner antigène", "de": "Antigen wählen"},
+    "select_infection":{"en": "Select infection",     "vi": "Chọn loại bệnh",        "it": "Seleziona infezione",  "fr": "Sélectionner infection","de": "Infektion wählen"},
+    "select_economy":  {"en": "Select economic status","vi": "Chọn tình trạng KT",   "it": "Seleziona status",     "fr": "Sélectionner le statut","de": "Wirtschaftsstatus wählen"},
+    "select_year":     {"en": "Select Year",          "vi": "Chọn năm",              "it": "Seleziona anno",       "fr": "Sélectionner année",    "de": "Jahr wählen"},
+
+    # ── Buttons ────────────────────────────────────────────────────────────────
+    "btn_apply": {"en": "Apply Filters", "vi": "Áp dụng",     "it": "Applica filtri", "fr": "Appliquer",        "de": "Anwenden"},
+    "btn_reset": {"en": "Reset",         "vi": "Đặt lại",      "it": "Reimposta",      "fr": "Réinitialiser",    "de": "Zurücksetzen"},
+
+    # ── Results bar ────────────────────────────────────────────────────────────
+    "showing_result":      {"en": "Showing result for:", "vi": "Kết quả cho:",              "it": "Risultati per:",              "fr": "Résultats pour :",              "de": "Ergebnisse für:"},
+    "countries_found":     {"en": "countries found",     "vi": "quốc gia",                  "it": "paesi trovati",               "fr": "pays trouvés",                 "de": "Länder gefunden"},
+    "countries_both_years":{"en": "countries with data in both years","vi": "quốc gia có dữ liệu cả hai năm","it": "paesi con dati per entrambi gli anni","fr": "pays avec données pour les deux années","de": "Länder mit Daten für beide Jahre"},
+    "last_updated":        {"en": "Last updated WHO dataset","vi": "Dữ liệu WHO cập nhật đến","it": "Ultimo aggiornamento WHO",   "fr": "Données WHO mises à jour jusqu'en","de": "WHO-Daten aktualisiert bis"},
+
+    # ── Saved views ────────────────────────────────────────────────────────────
+    "saved_views":        {"en": "Saved views:",     "vi": "Chế độ xem đã lưu:",    "it": "Viste salvate:",    "fr": "Vues enregistrées :",   "de": "Gespeicherte Ansichten:"},
+    "save_view_btn":      {"en": "Save View",        "vi": "Lưu",                   "it": "Salva vista",       "fr": "Enregistrer",           "de": "Speichern"},
+    "save_placeholder":   {"en": "Name this view...", "vi": "Đặt tên chế độ xem...","it": "Nome vista...",     "fr": "Nommer cette vue...",   "de": "Ansicht benennen..."},
+    "delete":             {"en": "Delete",           "vi": "Xóa",                   "it": "Elimina",           "fr": "Supprimer",             "de": "Löschen"},
+    "saved_msg":          {"en": "Saved",            "vi": "Đã lưu",                "it": "Salvato",           "fr": "Enregistré",            "de": "Gespeichert"},
+    "deleted_msg":        {"en": "Deleted",          "vi": "Đã xóa",                "it": "Eliminato",         "fr": "Supprimé",              "de": "Gelöscht"},
+    "already_saved_msg":  {"en": "Already saved",   "vi": "Đã lưu trước đó",       "it": "Già salvato",       "fr": "Déjà enregistré",       "de": "Bereits gespeichert"},
+    "starter_note":       {
+        "en": "Starter examples appear until you save your own view.",
+        "vi": "Ví dụ mẫu hiển thị cho đến khi bạn lưu chế độ xem của riêng mình.",
+        "it": "Esempi iniziali finché non si salva una vista.",
+        "fr": "Exemples de départ jusqu'à ce que vous enregistriez votre vue.",
+        "de": "Startbeispiele bis Sie Ihre eigene Ansicht speichern.",
+    },
+
+    # ── Table headers ──────────────────────────────────────────────────────────
+    "th_country":  {"en": "Country",         "vi": "Quốc gia",          "it": "Paese",          "fr": "Pays",              "de": "Land"},
+    "th_antigen":  {"en": "Antigen",         "vi": "Kháng nguyên",      "it": "Antigene",       "fr": "Antigène",          "de": "Antigen"},
+    "th_year":     {"en": "Year",            "vi": "Năm",               "it": "Anno",           "fr": "Année",             "de": "Jahr"},
+    "th_region":   {"en": "Region",          "vi": "Khu vực",           "it": "Regione",        "fr": "Région",            "de": "Region"},
+    "th_coverage": {"en": "Coverage (%)",    "vi": "Độ phủ (%)",        "it": "Copertura (%)",  "fr": "Couverture (%)",    "de": "Abdeckung (%)"},
+    "th_disease":  {"en": "Disease",         "vi": "Bệnh",              "it": "Malattia",       "fr": "Maladie",           "de": "Krankheit"},
+    "th_economy":  {"en": "Economic Status", "vi": "Tình trạng kinh tế","it": "Status economico","fr": "Statut économique", "de": "Wirtschaftsstatus"},
+    "th_cases":    {"en": "Cases",           "vi": "Số ca",             "it": "Casi",           "fr": "Cas",               "de": "Fälle"},
+    "th_rate":     {"en": "Rate/100k",       "vi": "Tỷ lệ/100k",        "it": "Tasso/100k",     "fr": "Taux/100k",         "de": "Rate/100k"},
+    "th_increase": {"en": "Increase (pp)",   "vi": "Tăng (điểm %)",     "it": "Aumento (pp)",   "fr": "Hausse (pp)",       "de": "Zunahme (pp)"},
+    "th_start":    {"en": "Start",           "vi": "Bắt đầu",           "it": "Inizio",         "fr": "Début",             "de": "Anfang"},
+    "th_end":      {"en": "End",             "vi": "Kết thúc",          "it": "Fine",           "fr": "Fin",               "de": "Ende"},
+    "th_rank":     {"en": "Rank",            "vi": "Hạng",              "it": "Classifica",     "fr": "Rang",              "de": "Rang"},
+    "no_data":     {
+        "en": "No data found for the selected filters",
+        "vi": "Không có dữ liệu cho bộ lọc đã chọn",
+        "it": "Nessun dato trovato per i filtri selezionati",
+        "fr": "Aucune donnée trouvée pour les filtres sélectionnés",
+        "de": "Keine Daten für die gewählten Filter gefunden",
+    },
+
+    # ── Tab labels ─────────────────────────────────────────────────────────────
+    "tab_table": {"en": "Table",  "vi": "Bảng",    "it": "Tabella",  "fr": "Tableau",   "de": "Tabelle"},
+    "tab_chart": {"en": "Chart",  "vi": "Biểu đồ", "it": "Grafico",  "fr": "Graphique", "de": "Diagramm"},
+
+    # ── Sort options ───────────────────────────────────────────────────────────
+    "sort_target_hl":      {"en": "% of Target (High→Low)",       "vi": "% Mục tiêu (Cao→Thấp)",    "it": "% Obiettivo (Alto→Basso)",     "fr": "% Cible (Haut→Bas)",           "de": "% Ziel (Hoch→Niedrig)"},
+    "sort_target_lh":      {"en": "% of Target (Low→High)",       "vi": "% Mục tiêu (Thấp→Cao)",    "it": "% Obiettivo (Basso→Alto)",     "fr": "% Cible (Bas→Haut)",           "de": "% Ziel (Niedrig→Hoch)"},
+    "sort_country_az":     {"en": "Country (A→Z)",                "vi": "Quốc gia (A→Z)",           "it": "Paese (A→Z)",                  "fr": "Pays (A→Z)",                   "de": "Land (A→Z)"},
+    "sort_country_za":     {"en": "Country (Z→A)",                "vi": "Quốc gia (Z→A)",           "it": "Paese (Z→A)",                  "fr": "Pays (Z→A)",                   "de": "Land (Z→A)"},
+    "sort_region_az":      {"en": "Region (A→Z)",                 "vi": "Khu vực (A→Z)",            "it": "Regione (A→Z)",                "fr": "Région (A→Z)",                 "de": "Region (A→Z)"},
+    "sort_region_za":      {"en": "Region (Z→A)",                 "vi": "Khu vực (Z→A)",            "it": "Regione (Z→A)",                "fr": "Région (Z→A)",                 "de": "Region (Z→A)"},
+    "sort_increase_hl":    {"en": "Highest Increase",             "vi": "Tăng nhiều nhất",          "it": "Aumento maggiore",             "fr": "Hausse maximale",              "de": "Größter Anstieg"},
+    "sort_increase_lh":    {"en": "Lowest Increase",              "vi": "Tăng ít nhất",             "it": "Aumento minore",               "fr": "Hausse minimale",              "de": "Kleinster Anstieg"},
+    "sort_start_rate_hl":  {"en": "Start Rate (High→Low)",        "vi": "Tỷ lệ đầu (Cao→Thấp)",    "it": "Tasso inizio (Alto→Basso)",    "fr": "Taux début (Haut→Bas)",        "de": "Startrate (Hoch→Niedrig)"},
+    "sort_start_rate_lh":  {"en": "Start Rate (Low→High)",        "vi": "Tỷ lệ đầu (Thấp→Cao)",    "it": "Tasso inizio (Basso→Alto)",    "fr": "Taux début (Bas→Haut)",        "de": "Startrate (Niedrig→Hoch)"},
+    "sort_end_rate_hl":    {"en": "End Rate (High→Low)",          "vi": "Tỷ lệ cuối (Cao→Thấp)",   "it": "Tasso fine (Alto→Basso)",      "fr": "Taux fin (Haut→Bas)",          "de": "Endrate (Hoch→Niedrig)"},
+    "sort_end_rate_lh":    {"en": "End Rate (Low→High)",          "vi": "Tỷ lệ cuối (Thấp→Cao)",   "it": "Tasso fine (Basso→Alto)",      "fr": "Taux fin (Bas→Haut)",          "de": "Endrate (Niedrig→Hoch)"},
+    "sort_rate_hl":        {"en": "Cases per 100k (High to Low)", "vi": "Ca/100k (Cao→Thấp)",       "it": "Casi per 100k (Alto→Basso)",   "fr": "Cas/100k (Haut→Bas)",          "de": "Fälle/100k (Hoch→Niedrig)"},
+    "sort_rate_lh":        {"en": "Cases per 100k (Low to High)", "vi": "Ca/100k (Thấp→Cao)",       "it": "Casi per 100k (Basso→Alto)",   "fr": "Cas/100k (Bas→Haut)",          "de": "Fälle/100k (Niedrig→Hoch)"},
+    "sort_cases_hl":       {"en": "Cases (High to Low)",          "vi": "Số ca (Cao→Thấp)",         "it": "Casi (Alto→Basso)",            "fr": "Cas (Haut→Bas)",               "de": "Fälle (Hoch→Niedrig)"},
+    "sort_cases_lh":       {"en": "Cases (Low to High)",          "vi": "Số ca (Thấp→Cao)",         "it": "Casi (Basso→Alto)",            "fr": "Cas (Bas→Haut)",               "de": "Fälle (Niedrig→Hoch)"},
+    "sort_economy_az":     {"en": "Economic Status (A to Z)",     "vi": "Trạng thái KT (A→Z)",      "it": "Status economico (A→Z)",       "fr": "Statut éco. (A→Z)",            "de": "Wirtschaft (A→Z)"},
+    "sort_economy_za":     {"en": "Economic Status (Z to A)",     "vi": "Trạng thái KT (Z→A)",      "it": "Status economico (Z→A)",       "fr": "Statut éco. (Z→A)",            "de": "Wirtschaft (Z→A)"},
+    "sort_improvement_hl": {"en": "Biggest Improvement",          "vi": "Cải thiện nhiều nhất",     "it": "Miglioramento maggiore",       "fr": "Plus grande amélioration",     "de": "Größte Verbesserung"},
+    "sort_improvement_lh": {"en": "Smallest Improvement",         "vi": "Cải thiện ít nhất",        "it": "Miglioramento minore",         "fr": "Plus petite amélioration",     "de": "Kleinste Verbesserung"},
+    "sort_start_cases_hl": {"en": "Start Cases (High to Low)",    "vi": "Ca đầu (Cao→Thấp)",        "it": "Casi inizio (Alto→Basso)",     "fr": "Cas début (Haut→Bas)",         "de": "Startfälle (Hoch→Niedrig)"},
+    "sort_start_cases_lh": {"en": "Start Cases (Low to High)",    "vi": "Ca đầu (Thấp→Cao)",        "it": "Casi inizio (Basso→Alto)",     "fr": "Cas début (Bas→Haut)",         "de": "Startfälle (Niedrig→Hoch)"},
+    "sort_end_cases_hl":   {"en": "End Cases (High to Low)",      "vi": "Ca cuối (Cao→Thấp)",       "it": "Casi fine (Alto→Basso)",       "fr": "Cas fin (Haut→Bas)",           "de": "Endfälle (Hoch→Niedrig)"},
+    "sort_end_cases_lh":   {"en": "End Cases (Low to High)",      "vi": "Ca cuối (Thấp→Cao)",       "it": "Casi fine (Basso→Alto)",       "fr": "Cas fin (Bas→Haut)",           "de": "Endfälle (Niedrig→Hoch)"},
+
+    # ── Inactive / empty state ─────────────────────────────────────────────────
+    "inactive_select":       {"en": "Please select",    "vi": "Vui lòng chọn",       "it": "Seleziona",              "fr": "Veuillez sélectionner", "de": "Bitte wählen"},
+    "inactive_an_antigen":   {"en": "an Antigen",       "vi": "một Kháng nguyên",    "it": "un Antigene",            "fr": "un Antigène",           "de": "ein Antigen"},
+    "inactive_a_year":       {"en": "a Year",           "vi": "một Năm",             "it": "un Anno",                "fr": "une Année",             "de": "ein Jahr"},
+    "inactive_and":          {"en": "and",              "vi": "và",                  "it": "e",                      "fr": "et",                    "de": "und"},
+    "inactive_apply_suffix": {
+        "en": "then click {0} to view this data",
+        "vi": "rồi nhấn {0} để xem dữ liệu",
+        "it": "poi clicca {0} per visualizzare i dati",
+        "fr": "puis cliquez sur {0} pour voir les données",
+        "de": "dann klicke {0} um die Daten anzuzeigen",
+    },
+    "inactive_msg_vacc3": {
+        "en": "Please select an Antigen then click Apply Filters to view this data",
+        "vi": "Vui lòng chọn Kháng nguyên rồi nhấn Áp dụng để xem dữ liệu",
+        "it": "Seleziona un Antigene poi clicca Applica filtri per visualizzare i dati",
+        "fr": "Sélectionnez un Antigène puis cliquez sur Appliquer pour voir les données",
+        "de": "Wähle ein Antigen, dann klicke Anwenden um die Daten anzuzeigen",
+    },
+    "inactive_msg_inf2": {
+        "en": "Choose an infection type, economic status, and year, then click Apply Filters to view this data.",
+        "vi": "Chọn loại bệnh, tình trạng kinh tế và năm, rồi nhấn Áp dụng để xem dữ liệu.",
+        "it": "Scegli un tipo di infezione, status economico e anno, poi clicca Applica filtri.",
+        "fr": "Choisissez un type d'infection, statut économique et année, puis cliquez Appliquer.",
+        "de": "Wähle Infektionstyp, Wirtschaftsstatus und Jahr, dann klicke Anwenden.",
+    },
+    "inactive_msg_inf3": {
+        "en": "Choose an infection type, economic status, and year range, then click Apply Filters to view this data.",
+        "vi": "Chọn loại bệnh, tình trạng kinh tế và khoảng năm, rồi nhấn Áp dụng để xem dữ liệu.",
+        "it": "Scegli un tipo di infezione, status economico e intervallo anni, poi clicca Applica filtri.",
+        "fr": "Choisissez un type d'infection, statut économique et plage d'années, puis cliquez Appliquer.",
+        "de": "Wähle Infektionstyp, Wirtschaftsstatus und Jahresbereich, dann klicke Anwenden.",
+    },
+    "not_enough_chart": {
+        "en": "Not enough country data to display a chart.",
+        "vi": "Không đủ dữ liệu quốc gia để hiển thị biểu đồ.",
+        "it": "Dati insufficienti per visualizzare un grafico.",
+        "fr": "Pas assez de données pays pour afficher un graphique.",
+        "de": "Nicht genug Länderdaten für ein Diagramm.",
+    },
+
+    # ── Info notes ─────────────────────────────────────────────────────────────
+    "info_note_vacc2": {
+        "en": "Note: Tables update only when you click “Apply Filters”. Region & Country dropdowns refresh instantly for cascade selection. Use “Reset” to clear all selections.",
+        "vi": "Lưu ý: Bảng chỉ cập nhật khi bạn nhấn “Áp dụng”. Danh sách Khu vực & Quốc gia làm mới ngay lập tức để chọn theo tầng. Dùng “Đặt lại” để xóa tất cả.",
+        "it": "Nota: Le tabelle si aggiornano solo cliccando “Applica filtri”. I menu Regione e Paese si aggiornano istantaneamente. Usa “Reimposta” per cancellare.",
+        "fr": "Note : Les tableaux se mettent à jour uniquement en cliquant sur “Appliquer”. Les listes Région et Pays se rafraîchissent instantanément. Utilisez “Réinitialiser” pour tout effacer.",
+        "de": "Hinweis: Tabellen aktualisieren sich nur beim Klicken auf “Anwenden”. Region- und Land-Dropdowns aktualisieren sofort. Verwende “Zurücksetzen” um alles zu löschen.",
+    },
+    "info_note_vacc3_pre": {
+        "en": "Note: Only countries with vaccination and population data for",
+        "vi": "Lưu ý: Chỉ những quốc gia có dữ liệu tiêm chủng và dân số cho",
+        "it": "Nota: Solo i paesi con dati di vaccinazione e popolazione per",
+        "fr": "Note : Seuls les pays avec des données de vaccination et de population pour",
+        "de": "Hinweis: Nur Länder mit Impf- und Bevölkerungsdaten für",
+    },
+    "info_note_vacc3_both": {"en": "BOTH", "vi": "CẢ HAI", "it": "ENTRAMBI", "fr": "LES DEUX", "de": "BEIDE"},
+    "info_note_vacc3_post": {
+        "en": "are included.",
+        "vi": "được đưa vào.",
+        "it": "sono inclusi.",
+        "fr": "sont inclus.",
+        "de": "sind enthalten.",
+    },
+    "info_note_vacc3_formula": {
+        "en": "Vaccination Rate = doses administered ÷ total country population × 100",
+        "vi": "Tỷ lệ tiêm chủng = liều đã tiêm ÷ tổng dân số × 100",
+        "it": "Tasso di vaccinazione = dosi somministrate ÷ popolazione totale × 100",
+        "fr": "Taux de vaccination = doses administrées ÷ population totale × 100",
+        "de": "Impfrate = verabreichte Dosen ÷ Gesamtbevölkerung × 100",
+    },
+    "info_note_vacc3_increase": {
+        "en": "Increase = End Year Rate − Start Year Rate (percentage points).",
+        "vi": "Tăng = Tỷ lệ Năm Cuối − Tỷ lệ Năm Đầu (điểm phần trăm).",
+        "it": "Aumento = Tasso Anno Finale − Tasso Anno Iniziale (punti percentuali).",
+        "fr": "Hausse = Taux Année Finale − Taux Année Initiale (points de pourcentage).",
+        "de": "Anstieg = Endjahrrate − Startjahrrate (Prozentpunkte).",
+    },
+    "info_note_inf2": {
+        "en": "Note: Country infection rates are calculated as reported cases divided by population, multiplied by 100,000. Tables update when you click “Apply Filters”.",
+        "vi": "Lưu ý: Tỷ lệ nhiễm bệnh theo quốc gia được tính bằng số ca báo cáo chia cho dân số, nhân với 100.000. Bảng cập nhật khi bạn nhấn “Áp dụng”.",
+        "it": "Nota: I tassi di infezione per paese si calcolano come casi segnalati divisi per la popolazione, moltiplicati per 100.000. Le tabelle si aggiornano cliccando “Applica filtri”.",
+        "fr": "Note : Les taux d'infection par pays sont calculés comme les cas signalés divisés par la population, multipliés par 100 000. Les tableaux se mettent à jour en cliquant sur “Appliquer”.",
+        "de": "Hinweis: Länderspezifische Infektionsraten werden als gemeldete Fälle geteilt durch die Bevölkerung mal 100.000 berechnet. Tabellen aktualisieren beim Klicken auf “Anwenden”.",
+    },
+    "info_note_inf3": {
+        "en": "Note: Improvement is calculated as start-year infection rate minus end-year infection rate per 100,000 people. Positive values mean reported infection rates decreased.",
+        "vi": "Lưu ý: Cải thiện được tính bằng tỷ lệ nhiễm bệnh năm đầu trừ tỷ lệ năm cuối trên 100.000 người. Giá trị dương nghĩa là tỷ lệ nhiễm bệnh đã giảm.",
+        "it": "Nota: Il miglioramento si calcola come tasso di infezione dell'anno iniziale meno tasso dell'anno finale per 100.000 persone. Valori positivi indicano una riduzione.",
+        "fr": "Note : L'amélioration est calculée comme le taux d'infection de l'année de début moins celui de l'année de fin pour 100 000 personnes. Les valeurs positives indiquent une réduction.",
+        "de": "Hinweis: Die Verbesserung wird als Infektionsrate im Startjahr minus Infektionsrate im Endjahr pro 100.000 Personen berechnet. Positive Werte bedeuten gesunkene Raten.",
+    },
+
+    # ── How-card ───────────────────────────────────────────────────────────────
+    "how_works_title":     {"en": "How This View Works?",  "vi": "Chế độ xem này hoạt động ra sao?", "it": "Come funziona questa vista?",     "fr": "Comment fonctionne cette vue ?", "de": "Wie funktioniert diese Ansicht?"},
+    "how_view_methodology":{"en": "View methodology",      "vi": "Xem phương pháp",                  "it": "Vedi metodologia",                 "fr": "Voir la méthodologie",               "de": "Methodik ansehen"},
+    "how_data_dict":       {"en": "Data Dictionary",       "vi": "Từ điển Dữ liệu",                  "it": "Dizionario dei dati",              "fr": "Dictionnaire de données",            "de": "Datenwörterbuch"},
+    "how_desc_vacc2": {
+        "en": "Select an antigen and year. Optionally filter by region or country. Use Table or Chart to compare vaccination coverage across countries and regions.",
+        "vi": "Chọn kháng nguyên và năm. Tùy chọn lọc theo khu vực hoặc quốc gia. Dùng Bảng hoặc Biểu đồ để so sánh độ phủ tiêm chủng.",
+        "it": "Seleziona un antigene e un anno. Filtra opzionalmente per regione o paese. Usa Tabella o Grafico per confrontare la copertura vaccinale.",
+        "fr": "Sélectionnez un antigène et une année. Filtrez optionnellement par région ou pays. Utilisez Tableau ou Graphique pour comparer la couverture.",
+        "de": "Wähle ein Antigen und ein Jahr. Optional nach Region oder Land filtern. Verwende Tabelle oder Diagramm zum Vergleich der Impfabdeckung.",
+    },
+    "how_desc_vacc3": {
+        "en": "Select an antigen, start year, and end year. Use Table or Chart to identify countries with the biggest vaccination rate improvement over time.",
+        "vi": "Chọn kháng nguyên, năm bắt đầu và năm kết thúc. Dùng Bảng hoặc Biểu đồ để xác định quốc gia có mức cải thiện tỷ lệ tiêm chủng lớn nhất.",
+        "it": "Seleziona un antigene, anno di inizio e anno di fine. Usa Tabella o Grafico per identificare i paesi con il maggior miglioramento.",
+        "fr": "Sélectionnez un antigène, une année de début et de fin. Utilisez Tableau ou Graphique pour identifier les pays avec la plus grande amélioration.",
+        "de": "Wähle ein Antigen, Startjahr und Endjahr. Verwende Tabelle oder Diagramm zur Identifikation von Ländern mit der größten Verbesserung.",
+    },
+    "how_desc_inf2": {
+        "en": "Select an infection type, economic status, and year. Use Table or Chart to switch between detailed records and a visual summary.",
+        "vi": "Chọn loại bệnh, tình trạng kinh tế và năm. Dùng Bảng hoặc Biểu đồ để chuyển giữa bản ghi chi tiết và tóm tắt trực quan.",
+        "it": "Seleziona un tipo di infezione, status economico e anno. Usa Tabella o Grafico per passare tra dettagli e riepilogo visivo.",
+        "fr": "Sélectionnez un type d'infection, statut économique et année. Utilisez Tableau ou Graphique pour alterner entre détails et résumé visuel.",
+        "de": "Wähle Infektionstyp, Wirtschaftsstatus und Jahr. Verwende Tabelle oder Diagramm für Details oder visuelle Übersicht.",
+    },
+    "how_desc_inf3": {
+        "en": "Select an infection type, economic status, start year, and end year. Use Table or Chart to compare countries by infection-rate improvement.",
+        "vi": "Chọn loại bệnh, tình trạng kinh tế, năm bắt đầu và năm kết thúc. Dùng Bảng hoặc Biểu đồ để so sánh cải thiện tỷ lệ nhiễm bệnh.",
+        "it": "Seleziona tipo di infezione, status economico, anno di inizio e fine. Usa Tabella o Grafico per confrontare il miglioramento del tasso.",
+        "fr": "Sélectionnez type d'infection, statut économique, année de début et de fin. Utilisez Tableau ou Graphique pour comparer l'amélioration.",
+        "de": "Wähle Infektionstyp, Wirtschaftsstatus, Start- und Endjahr. Verwende Tabelle oder Diagramm zum Vergleich der Infektionsverbesserung.",
+    },
+    "how_popup_vacc2": {
+        "en": "Coverage % = reported vaccination doses / country population x 100. Table 1 lists countries meeting ≥90% vaccination coverage for the selected antigen and year. Table 2 counts how many countries per region met the ≥90% target.",
+        "vi": "Độ phủ % = liều tiêm / dân số x 100. Bảng 1: quốc gia đạt ≥90%. Bảng 2: số quốc gia theo khu vực đạt ≥90%.",
+        "it": "Copertura % = dosi / popolazione x 100. Tabella 1: paesi con ≥90%. Tabella 2: conteggio per regione.",
+        "fr": "Couverture % = doses / population x 100. Tableau 1 : pays à ≥90%. Tableau 2 : compte par région.",
+        "de": "Abdeckung % = Dosen / Bevölkerung x 100. Tabelle 1: Länder mit ≥90%. Tabelle 2: Anzahl pro Region.",
+    },
+    "how_popup_vacc3": {
+        "en": "Vaccination Rate = doses administered / country population x 100. Increase = End Year Rate - Start Year Rate (percentage points). Only countries with data in both the start and end year are included.",
+        "vi": "Tỷ lệ tiêm = liều / dân số x 100. Tăng = Tỷ lệ Năm Cuối - Tỷ lệ Năm Đầu (điểm %). Chỉ bao gồm quốc gia có dữ liệu cả hai năm.",
+        "it": "Tasso di vaccinazione = dosi / popolazione x 100. Aumento = Tasso Fine - Tasso Inizio (pp). Solo paesi con dati in entrambi gli anni.",
+        "fr": "Taux de vaccination = doses / population x 100. Hausse = Taux Fin - Taux Début (pp). Seuls les pays avec données pour les deux années.",
+        "de": "Impfrate = Dosen / Bevölkerung x 100. Anstieg = Endrate - Startrate (Pp). Nur Länder mit Daten für beide Jahre.",
+    },
+    "how_popup_inf2": {
+        "en": "Cases per 100,000 people = infection cases / country population x 100,000. Table 1 filters countries by economic phase. Table 2 compares total cases across all economic phases for the selected infection and year.",
+        "vi": "Ca/100.000 người = ca nhiễm / dân số x 100.000. Bảng 1: lọc theo nhóm kinh tế. Bảng 2: so sánh tổng ca theo tất cả nhóm.",
+        "it": "Casi per 100.000 = casi / popolazione x 100.000. Tabella 1: per fase economica. Tabella 2: confronto totale.",
+        "fr": "Cas pour 100 000 = cas / population x 100 000. Tableau 1 : par phase économique. Tableau 2 : comparaison totale.",
+        "de": "Fälle/100.000 = Fälle / Bevölkerung x 100.000. Tabelle 1: nach Wirtschaftsphase. Tabelle 2: Gesamtvergleich.",
+    },
+    "how_popup_inf3": {
+        "en": "Infection rate = reported cases / country population x 100,000. Improvement = start-year rate - end-year rate, so a higher positive number represents a larger reduction in reported infections.",
+        "vi": "Tỷ lệ nhiễm = ca / dân số x 100.000. Cải thiện = tỷ lệ năm đầu - tỷ lệ năm cuối (số dương lớn hơn = giảm nhiều hơn).",
+        "it": "Tasso infettivo = casi / popolazione x 100.000. Miglioramento = tasso inizio - tasso fine (numero positivo più grande = riduzione maggiore).",
+        "fr": "Taux d'infection = cas / population x 100 000. Amélioration = taux début - taux fin (valeur positive plus grande = réduction plus grande).",
+        "de": "Infektionsrate = Fälle / Bevölkerung x 100.000. Verbesserung = Startrate - Endrate (größere positive Zahl = größere Reduktion).",
+    },
+
+    # ── Footer ─────────────────────────────────────────────────────────────────
+    "footer_brand_title": {
+        "en": "Preventable Disease Data Explorer",
+        "vi": "Khám phá Dữ liệu Bệnh có thể Phòng ngừa",
+        "it": "Esploratore Dati Malattie Prevenibili",
+        "fr": "Explorateur Données Maladies Évitables",
+        "de": "Erkundung vermeidbarer Krankheitsdaten",
+    },
+    "footer_brand_desc": {
+        "en": "Exploring vaccination data to inform decisions and improve health outcomes worldwide",
+        "vi": "Khám phá dữ liệu tiêm chủng để hỗ trợ quyết định và cải thiện kết quả sức khỏe toàn cầu",
+        "it": "Esplorare i dati vaccinali per informare le decisioni e migliorare i risultati sanitari nel mondo",
+        "fr": "Explorer les données vaccinales pour éclairer les décisions et améliorer les résultats de santé dans le monde",
+        "de": "Impfdaten erkunden, um Entscheidungen zu informieren und Gesundheitsergebnisse weltweit zu verbessern",
+    },
+    "footer_col_about":     {"en": "About",              "vi": "Giới thiệu",           "it": "Chi siamo",                   "fr": "À propos",                    "de": "Über uns"},
+    "footer_mission":       {"en": "Mission Statement",  "vi": "Tuyên bố sứ mệnh",    "it": "Dichiarazione di missione",   "fr": "Déclaration de mission",      "de": "Leitbild"},
+    "footer_personas":      {"en": "Personas",           "vi": "Hồ sơ người dùng",    "it": "Personas",                    "fr": "Personas",                    "de": "Personas"},
+    "footer_team":          {"en": "Our Team",           "vi": "Nhóm chúng tôi",      "it": "Il nostro team",              "fr": "Notre équipe",                "de": "Unser Team"},
+    "footer_col_focus":     {"en": "Focus view",         "vi": "Chế độ xem tập trung","it": "Vista focalizzata",           "fr": "Vue ciblée",                  "de": "Fokusansicht"},
+    "footer_country_region":{"en": "On Country & Region","vi": "Theo Quốc gia & Khu vực","it": "Per Paese e Regione","fr": "Par Pays & Région",    "de": "Nach Land & Region"},
+    "footer_economic":      {"en": "On Economic statistics","vi": "Theo Thống kê Kinh tế","it": "Per statistiche economiche","fr": "Par statistiques économiques","de": "Nach Wirtschaftsstatistik"},
+    "footer_col_analysis":  {"en": "In-depth analysis",  "vi": "Phân tích chuyên sâu","it": "Analisi approfondita",        "fr": "Analyse approfondie",         "de": "Eingehende Analyse"},
+    "footer_col_help":      {"en": "Help",               "vi": "Trợ giúp",             "it": "Aiuto",                       "fr": "Aide",                        "de": "Hilfe"},
+    "footer_faqs":          {"en": "FAQs",               "vi": "Câu hỏi thường gặp",  "it": "FAQ",                         "fr": "FAQ",                         "de": "FAQ"},
+    "footer_contact":       {"en": "Contact Us",         "vi": "Liên hệ",              "it": "Contattaci",                  "fr": "Contactez-nous",              "de": "Kontakt"},
+    "footer_feedback":      {"en": "Feedback",           "vi": "Phản hồi",             "it": "Feedback",                    "fr": "Commentaires",                "de": "Feedback"},
+    "footer_privacy":       {"en": "Privacy Policy",     "vi": "Chính sách bảo mật",  "it": "Privacy",                     "fr": "Politique de confidentialité","de": "Datenschutz"},
+    "footer_terms":         {"en": "Terms of Use",       "vi": "Điều khoản sử dụng",  "it": "Termini d'uso",               "fr": "Conditions d'utilisation",    "de": "Nutzungsbedingungen"},
+
+    # ── Home page ──────────────────────────────────────────────────────────────
+    "home_hero_title": {
+        "en": "Connecting the world through reliable vaccination data.",
+        "vi": "Kết nối thế giới qua dữ liệu tiêm chủng đáng tin cậy.",
+        "it": "Connettere il mondo attraverso dati vaccinali affidabili.",
+        "fr": "Connecter le monde grâce à des données vaccinales fiables.",
+        "de": "Die Welt durch zuverlässige Impfdaten verbinden.",
+    },
+    "home_hero_desc": {
+        "en": "Discover insights on immunization coverage, disease incidents and trends across countries, regions and over time. Data from the World Health Organization (2000 - 2024)",
+        "vi": "Khám phá thông tin về độ phủ tiêm chủng, sự kiện và xu hướng dịch bệnh theo quốc gia, khu vực và thời gian. Dữ liệu từ Tổ chức Y tế Thế giới (2000 - 2024)",
+        "it": "Scopri approfondimenti sulla copertura vaccinale, incidenti di malattie e tendenze tra paesi e nel tempo. Dati dell'OMS (2000 - 2024)",
+        "fr": "Découvrez des analyses sur la couverture vaccinale, les incidents de maladies et les tendances à travers les pays. Données de l'OMS (2000 - 2024)",
+        "de": "Entdecken Sie Erkenntnisse zur Impfabdeckung und Krankheitstrends in Ländern und im Zeitverlauf. Daten der WHO (2000 - 2024)",
+    },
+    "home_btn_explore": {"en": "Explore the Data",  "vi": "Khám phá Dữ liệu",  "it": "Esplora i Dati",      "fr": "Explorer les Données", "de": "Daten Erkunden"},
+    "home_btn_learn":   {"en": "Learn More",        "vi": "Tìm hiểu thêm",     "it": "Scopri di più",       "fr": "En savoir plus",       "de": "Mehr erfahren"},
+    "home_snapshot_title": {
+        "en": "Global Immunization Snapshot (2000 - 2024)",
+        "vi": "Ảnh chụp tiêm chủng toàn cầu (2000 - 2024)",
+        "it": "Panoramica globale delle vaccinazioni (2000 - 2024)",
+        "fr": "Aperçu mondial de la vaccination (2000 - 2024)",
+        "de": "Globale Impfübersicht (2000 - 2024)",
+    },
+    "home_view_methodology": {"en": "View methodology", "vi": "Xem phương pháp", "it": "Vedi metodologia", "fr": "Voir la méthodologie", "de": "Methodik ansehen"},
+    "home_stat_countries_label": {"en": "Countries",        "vi": "Quốc gia",           "it": "Paesi",              "fr": "Pays",              "de": "Länder"},
+    "home_stat_countries_desc":  {"en": "Across 7 global regions tracked (2000–2024)", "vi": "Theo dõi trong 7 khu vực toàn cầu (2000–2024)", "it": "In 7 regioni globali monitorate (2000–2024)", "fr": "Dans 7 régions mondiales suivies (2000–2024)", "de": "In 7 globalen Regionen verfolgt (2000–2024)"},
+    "home_stat_coverage_label":  {"en": "Average Coverage", "vi": "Độ phủ trung bình",  "it": "Copertura media",    "fr": "Couverture moyenne","de": "Durchschnittliche Abdeckung"},
+    "home_stat_coverage_desc":   {"en": "Across 5 antigens and 217 countries (2000–2024)", "vi": "Theo 5 kháng nguyên và 217 quốc gia (2000–2024)", "it": "Per 5 antigeni e 217 paesi (2000–2024)", "fr": "Pour 5 antigènes et 217 pays (2000–2024)", "de": "Für 5 Antigene und 217 Länder (2000–2024)"},
+    "home_stat_high_cov_desc":   {
+        "en": "Achieved ≥90% coverage across ALL antigens in 2024",
+        "vi": "Đạt ≥90% độ phủ trên TẤT CẢ kháng nguyên năm 2024",
+        "it": "Ha raggiunto ≥90% di copertura su TUTTI gli antigeni nel 2024",
+        "fr": "A atteint ≥90% de couverture pour TOUS les antigènes en 2024",
+        "de": "Erreichte ≥90% Abdeckung für ALLE Antigene im Jahr 2024",
+    },
+    "home_stat_doses_label": {"en": "Doses",       "vi": "Liều vaccine",   "it": "Dosi",    "fr": "Doses",   "de": "Dosen"},
+    "home_stat_doses_desc":  {
+        "en": "Recorded across 5 antigens over 25 years",
+        "vi": "Ghi nhận theo 5 kháng nguyên trong 25 năm",
+        "it": "Registrate per 5 antigeni in 25 anni",
+        "fr": "Enregistrées pour 5 antigènes sur 25 ans",
+        "de": "Für 5 Antigene über 25 Jahre aufgezeichnet",
+    },
+    "home_disease_title": {"en": "Disease Covered",  "vi": "Bệnh được bao phủ",  "it": "Malattie coperte",  "fr": "Maladies couvertes",  "de": "Abgedeckte Krankheiten"},
+    "dose_1st": {"en": "1st dose", "vi": "Liều 1", "it": "1ª dose", "fr": "1ᴒ dose", "de": "1. Dosis"},
+    "dose_2nd": {"en": "2nd dose", "vi": "Liều 2", "it": "2ª dose", "fr": "2ᴒ dose", "de": "2. Dosis"},
+    "dose_3rd": {"en": "3rd dose", "vi": "Liều 3", "it": "3ª dose", "fr": "3ᴒ dose", "de": "3. Dosis"},
+
+    # ── About page ─────────────────────────────────────────────────────────────
+    "about_vision_title":   {"en": "Our Vision",              "vi": "Tầm nhìn của chúng tôi",              "it": "La nostra visione",             "fr": "Notre vision",            "de": "Unsere Vision"},
+    "about_vision_p1": {
+        "en": "ImmuniData exists to make preventable disease and immunisation data easier to understand, compare and act on. We want public health evidence to be accessible to students, analysts, policy teams and communities without requiring specialised tools.",
+        "vi": "ImmuniData tồn tại để làm cho dữ liệu về bệnh có thể phòng ngừa và tiêm chủng dễ hiểu, dễ so sánh và dễ hành động hơn. Chúng tôi muốn bằng chứng y tế công cộng tiếp cận được với sinh viên, nhà phân tích, nhóm chính sách và cộng đồng mà không cần công cụ chuyên dụng.",
+        "it": "ImmuniData esiste per rendere i dati sulle malattie prevenibili e sull'immunizzazione più facili da capire, confrontare e su cui agire. Vogliamo che le prove di salute pubblica siano accessibili senza strumenti specializzati.",
+        "fr": "ImmuniData existe pour rendre les données sur les maladies évitables et l'immunisation plus faciles à comprendre, comparer et utiliser, sans outils spécialisés.",
+        "de": "ImmuniData existiert, um Daten zu vermeidbaren Krankheiten und Impfungen leichter verständlich, vergleichbar und umsetzbar zu machen, ohne spezialisierte Werkzeuge zu benötigen.",
+    },
+    "about_vision_p2": {
+        "en": "Our mission is to turn large vaccination and infection datasets into clear views that support better decisions, stronger awareness and more equitable health outcomes.",
+        "vi": "Sứ mệnh của chúng tôi là chuyển đổi các tập dữ liệu tiêm chủng và nhiễm bệnh lớn thành các chế độ xem rõ ràng để hỗ trợ quyết định tốt hơn, nhận thức mạnh mẽ hơn và kết quả sức khỏe công bằng hơn.",
+        "it": "La nostra missione è trasformare grandi dataset di vaccinazione e infezione in visualizzazioni chiare che supportino decisioni migliori e risultati di salute più equi.",
+        "fr": "Notre mission est de transformer de grands ensembles de données sur la vaccination et les infections en vues claires qui soutiennent de meilleures décisions et des résultats sanitaires plus équitables.",
+        "de": "Unsere Mission ist es, große Impf- und Infektionsdatensätze in klare Ansichten umzuwandeln, die bessere Entscheidungen und gerechtere Gesundheitsergebnisse unterstützen.",
+    },
+    "about_approach_title": {"en": "User-Friendly Approach", "vi": "Phương pháp thân thiện người dùng",    "it": "Approccio intuitivo",           "fr": "Approche conviviale",     "de": "Benutzerfreundlicher Ansatz"},
+    "about_approach_p1": {
+        "en": "We focus on clean navigation, useful filters and readable summaries so users can move from a broad global picture to a specific country, region, disease or economic context.",
+        "vi": "Chúng tôi tập trung vào điều hướng rõ ràng, bộ lọc hữu ích và tóm tắt dễ đọc để người dùng có thể chuyển từ bức tranh toàn cầu rộng lớn đến một quốc gia, khu vực, bệnh hoặc bối cảnh kinh tế cụ thể.",
+        "it": "Ci concentriamo su una navigazione pulita, filtri utili e riepiloghi leggibili in modo che gli utenti possano passare da un quadro globale a un contesto specifico.",
+        "fr": "Nous nous concentrons sur une navigation claire, des filtres utiles et des résumés lisibles afin que les utilisateurs puissent passer d'une vue globale à un contexte spécifique.",
+        "de": "Wir konzentrieren uns auf klare Navigation, nützliche Filter und lesbare Zusammenfassungen, damit Benutzer vom globalen Bild zu einem spezifischen Kontext wechseln können.",
+    },
+    "about_approach_p2": {
+        "en": "Every page is designed to reduce confusion: clear labels, consistent tables and practical comparisons help users find patterns without losing sight of the people behind the data.",
+        "vi": "Mỗi trang được thiết kế để giảm nhầm lẫn: nhãn rõ ràng, bảng nhất quán và so sánh thực tế giúp người dùng tìm kiếm các mẫu mà không mất dấu con người đằng sau dữ liệu.",
+        "it": "Ogni pagina è progettata per ridurre la confusione: etichette chiare, tabelle coerenti e confronti pratici aiutano gli utenti a trovare schemi senza perdere di vista le persone dietro i dati.",
+        "fr": "Chaque page est conçue pour réduire la confusion : des étiquettes claires, des tableaux cohérents et des comparaisons pratiques aident les utilisateurs à trouver des modèles.",
+        "de": "Jede Seite ist darauf ausgelegt, Verwirrung zu reduzieren: klare Beschriftungen, konsistente Tabellen und praktische Vergleiche helfen Benutzern, Muster zu finden.",
+    },
+    "about_who_title":      {"en": "Who Are We Helping?",    "vi": "Chúng tôi đang giúp ai?",             "it": "Chi stiamo aiutando?",          "fr": "Qui aidons-nous ?",  "de": "Wem helfen wir?"},
+    "persona_1_tab":        {"en": "Public Health researcher", "vi": "Nhà nghiên cứu y tế công cộng",       "it": "Ricercatore sanitario pubblico",   "fr": "Chercheur en santé publique",   "de": "Forscher im öffentlichen Gesundheitswesen"},
+    "persona_2_tab":        {"en": "Economist",                 "vi": "Nhà kinh tế",                        "it": "Economista",                    "fr": "Économiste",                   "de": "Ökonom"},
+    "persona_1_group":      {"en": "Public Health Learners and Researchers", "vi": "Người học và Nhà nghiên cứu Y tế Công cộng",       "it": "Studenti e Ricercatori di Salute Pubblica",   "fr": "Apprenants et Chercheurs en Santé Publique",   "de": "Lernende und Forscher im öffentlichen Gesundheitswesen"},
+    "persona_1_tooltip":    {"en": "Students, educators and early-stage researchers need a reliable way to explore how vaccination coverage, disease incidence and economic indicators relate across places and years.", "vi": "Sinh viên, giáo viên và nhà nghiên cứu giai đoạn đầu cần cách đáng tin cậy để khám phá mối quan hệ giữa độ phủ tiêm chủng, tỷ lệ mắc bệnh và chỉ số kinh tế qua các nơi và thời gian.", "it": "Studenti, educatori e ricercatori nelle prime fasi hanno bisogno di un modo affidabile per esplorare come la copertura vaccinale, l'incidenza delle malattie e gli indicatori economici si correlano.", "fr": "Les étudiants, éducateurs et chercheurs en début de carrière ont besoin d'un moyen fiable pour explorer comment la couverture vaccinale, l'incidence des maladies et les indicateurs économiques se rapportent.", "de": "Studenten, Lehrende und Forscher in frühen Stadien benötigen einen zuverlässigen Weg, um zu erkunden, wie Impfabdeckung, Krankheitsinzidenz und Wirtschaftsindikatoren zusammenhängen."},
+    "persona_2_group":      {"en": "Policy Planners and Community Advocates", "vi": "Nhà hoạch định Chính sách và Người vận động Cộng đồng",                        "it": "Pianificatori di Politiche e Sostenitori della Comunità",                    "fr": "Planificateurs de Politiques et Défenseurs Communautaires",                   "de": "Politikplaner und Gemeinschaftsvertreter"},
+    "persona_2_tooltip":    {"en": "Health program planners and community advocates need clear evidence to explain where preventable disease risks remain high and where immunisation progress needs support.", "vi": "Người lập kế hoạch chương trình y tế và người vận động cộng đồng cần bằng chứng rõ ràng để giải thích nơi nào rủi ro bệnh có thể phòng ngừa vẫn cao và nơi nào tiến trình tiêm chủng cần hỗ trợ.", "it": "I pianificatori di programmi sanitari e i sostenitori della comunità hanno bisogno di prove chiare per spiegare dove i rischi di malattie prevenibili restano elevati e dove il progresso dell'immunizzazione richiede supporto.", "fr": "Les planificateurs de programmes de santé et les défenseurs communautaires ont besoin de preuves claires pour expliquer où les risques de maladies évitables restent élevés et où les progrès de l'immunisation nécessitent un soutien.", "de": "Gesundheitsprogrammplanner und Gemeinschaftsvertreter benötigen klare Belege, um zu erklären, wo die Risiken vermeidbarer Krankheiten hoch bleiben und wo der Fortschritt der Immunisierung Unterstützung benötigt."},
+    "persona_1_title":      {"en": "Dr. Sarah Thompson",          "vi": "Tiến sĩ Sarah Thompson",  "it": "Dott.ssa Sarah Thompson",  "fr": "Dr Sarah Thompson",  "de": "Dr. Sarah Thompson"},
+    "persona_1_quote": {
+        "en": "Vaccination is one of the most powerful tools we have to prevent diseases and save lives. The more precise our data, the more effective our policies will be in improving health outcomes for everyone.",
+        "vi": "Tiêm chủng là một trong những công cụ mạnh mẽ nhất mà chúng ta có để ngăn ngừa bệnh tật và cứu sống. Dữ liệu càng chính xác, chính sách của chúng ta càng hiệu quả trong việc cải thiện kết quả sức khỏe cho mọi người.",
+        "it": "La vaccinazione è uno degli strumenti più potenti che abbiamo per prevenire le malattie e salvare vite. Più i nostri dati sono precisi, più efficaci saranno le nostre politiche nel migliorare i risultati sanitari per tutti.",
+        "fr": "La vaccination est l'un des outils les plus puissants dont nous disposons pour prévenir les maladies et sauver des vies. Plus nos données sont précises, plus nos politiques seront efficaces pour améliorer les résultats en santé pour tous.",
+        "de": "Impfungen sind eines der mächtigsten Instrumente, die wir haben, um Krankheiten vorzubeugen und Leben zu retten. Je genauer unsere Daten sind, desto wirksamer werden unsere Politiken sein, um Gesundheitsergebnisse für alle zu verbessern."
+    },
+    "persona_1_quote_title": {"en": "Quote", "vi": "Trích dẫn", "it": "Citazione", "fr": "Citation", "de": "Zitat"},
+    "persona_1_bio_title": {"en": "Bio", "vi": "Tiểu sử", "it": "Bio", "fr": "Bio", "de": "Bio"},
+    "persona_1_age": {"en": "Age: 38", "vi": "Tuổi: 38", "it": "Età: 38", "fr": "Âge : 38", "de": "Alter: 38"},
+    "persona_1_gender": {"en": "Gender: Female", "vi": "Giới tính: Nữ", "it": "Genere: Femmina", "fr": "Genre : Femme", "de": "Geschlecht: Weiblich"},
+    "persona_1_job_title": {"en": "Job Title: Senior Public Health Researcher", "vi": "Chức danh: Chuyên gia nghiên cứu y tế công cộng cấp cao", "it": "Ruolo: Ricercatrice sanitaria pubblica senior", "fr": "Poste : Chercheuse senior en santé publique", "de": "Berufsbezeichnung: Senior-Forscherin im Bereich öffentliche Gesundheit"},
+    "persona_1_education": {
+        "en": "Education: Ph.D. in Epidemiology (Specializing in Vaccine Effectiveness and Public Health Interventions)",
+        "vi": "Học vấn: Tiến sĩ Y tế Dịch tễ học (Chuyên về hiệu quả vắc xin và can thiệp y tế công cộng)",
+        "it": "Istruzione: Dottorato in Epidemiologia (Specializzazione in efficacia dei vaccini e interventi di sanità pubblica)",
+        "fr": "Formation : Doctorat en épidémiologie (spécialisé en efficacité des vaccins et interventions de santé publique)",
+        "de": "Ausbildung: Promotion in Epidemiologie (Spezialisierung auf Impfstoffwirksamkeit und Interventionen im Bereich der öffentlichen Gesundheit)"
+    },
+    "persona_1_location": {
+        "en": "Location: Global Health Research Institute (A leading research organization focused on global health challenges)",
+        "vi": "Địa điểm: Viện Nghiên cứu Y tế Toàn cầu (Một tổ chức nghiên cứu hàng đầu tập trung vào các thách thức y tế toàn cầu)",
+        "it": "Luogo: Istituto di Ricerca sulla Salute Globale (un'organizzazione di ricerca leader focalizzata sulle sfide della salute globale)",
+        "fr": "Lieu : Institut de recherche en santé mondiale (une organisation de recherche de premier plan axée sur les défis de la santé mondiale)",
+        "de": "Ort: Institut für globale Gesundheitsforschung (Eine führende Forschungsorganisation, die sich auf globale Gesundheitsherausforderungen konzentriert)"
+    },
+    "persona_1_experience": {
+        "en": "Experience: 10 years in public health research, specializing in vaccine effectiveness and disease prevention.",
+        "vi": "Kinh nghiệm: 10 năm trong nghiên cứu y tế công cộng, chuyên về hiệu quả vắc xin và phòng ngừa bệnh tật.",
+        "it": "Esperienza: 10 anni nella ricerca in sanità pubblica, specializzata in efficacia dei vaccini e prevenzione delle malattie.",
+        "fr": "Expérience : 10 ans de recherche en santé publique, spécialisée dans l'efficacité des vaccins et la prévention des maladies.",
+        "de": "Erfahrung: 10 Jahre in der Forschung im Bereich der öffentlichen Gesundheit, spezialisiert auf Impfstoffwirksamkeit und Krankheitsprävention."
+    },
+    "persona_1_current_project": {
+        "en": "Current Project: Evaluating the Impact of Vaccination Campaigns on Preventable Diseases in Low- and Middle-Income Countries (LMICs).",
+        "vi": "Dự án hiện tại: Đánh giá tác động của các chiến dịch tiêm chủng đối với các bệnh có thể phòng ngừa ở các nước có thu nhập thấp và trung bình (LMICs).",
+        "it": "Progetto attuale: Valutare l'impatto delle campagne vaccinali sulle malattie prevenibili nei paesi a basso e medio reddito (PMI).",
+        "fr": "Projet actuel : Évaluer l'impact des campagnes de vaccination sur les maladies évitables dans les pays à revenu faible et intermédiaire (PRFI).",
+        "de": "Aktuelles Projekt: Bewertung der Auswirkungen von Impfkampagnen auf vermeidbare Krankheiten in Ländern mit niedrigem und mittlerem Einkommen (LMICs)."
+    },
+    "persona_1_goal_1": {"en": "Access up-to-date vaccination data across countries and regions to compare trends and evaluate vaccination campaign effectiveness.", "vi": "Truy cập dữ liệu tiêm chủng cập nhật trên các quốc gia và khu vực để so sánh xu hướng và đánh giá hiệu quả chiến dịch tiêm chủng.", "it": "Accedere a dati vaccinali aggiornati tra paesi e regioni per confrontare le tendenze e valutare l'efficacia delle campagne di vaccinazione.", "fr": "Accéder à des données de vaccination à jour par pays et régions pour comparer les tendances et évaluer l'efficacité des campagnes de vaccination.", "de": "Zugriff auf aktuelle Impfdaten über Länder und Regionen hinweg, um Trends zu vergleichen und die Wirksamkeit von Impfkampagnen zu bewerten."},
+    "persona_1_goal_2": {"en": "Generate evidence-based insights to support public health policies and immunisation strategies.", "vi": "Tạo ra những hiểu biết dựa trên bằng chứng để hỗ trợ chính sách y tế cộng đồng và chiến lược tiêm chủng.", "it": "Generare approfondimenti basati su prove per supportare le politiche di salute pubblica e le strategie di immunizzazione.", "fr": "Générer des informations factuelles pour soutenir les politiques de santé publique et les stratégies d'immunisation.", "de": "Evidenzbasierte Erkenntnisse gewinnen, um die Gesundheitspolitik und Immunisierungsstrategien zu unterstützen."},
+    "persona_1_goal_3": {"en": "Track long-term impacts of vaccination programs on disease prevalence and health outcomes.", "vi": "Theo dõi tác động lâu dài của các chương trình tiêm chủng đối với tỷ lệ bệnh tật và kết quả sức khỏe.", "it": "Monitorare gli impatti a lungo termine dei programmi vaccinali sulla prevalenza delle malattie e sui risultati sanitari.", "fr": "Suivre les impacts à long terme des programmes de vaccination sur la prévalence des maladies et les résultats de santé.", "de": "Die langfristigen Auswirkungen von Impfprogrammen auf die Krankheitsprävalenz und Gesundheitsergebnisse verfolgen."},
+    "persona_1_pain_1": {"en": "Vaccination data is difficult to access, filter, and compare across multiple sources.", "vi": "Dữ liệu tiêm chủng khó truy cập, lọc và so sánh qua nhiều nguồn.", "it": "I dati vaccinali sono difficili da accedere, filtrare e confrontare tra più fonti.", "fr": "Les données de vaccination sont difficiles à accéder, filtrer et comparer entre plusieurs sources.", "de": "Impfdaten sind schwer zugänglich, zu filtern und zwischen mehreren Quellen zu vergleichen."},
+    "persona_1_pain_2": {"en": "Data quality can be inconsistent, outdated, incomplete, or fragmented.", "vi": "Chất lượng dữ liệu có thể không nhất quán, lỗi thời, thiếu hoặc phân mảnh.", "it": "La qualità dei dati può essere incoerente, obsoleta, incompleta o frammentata.", "fr": "La qualité des données peut être incohérente, obsolète, incomplète ou fragmentée.", "de": "Die Datenqualität kann inkonsistent, veraltet, unvollständig oder fragmentiert sein."},
+    "persona_1_pain_3": {"en": "Complex datasets are hard to visualise and explain clearly to policymakers.", "vi": "Các bộ dữ liệu phức tạp khó trực quan hóa và giải thích rõ ràng cho các nhà hoạch định chính sách.", "it": "I dataset complessi sono difficili da visualizzare e spiegare chiaramente ai responsabili politici.", "fr": "Les ensembles de données complexes sont difficiles à visualiser et à expliquer clairement aux décideurs.", "de": "Komplexe Datensätze lassen sich schwer visualisieren und den Entscheidungsträgern klar erklären."},
+    "persona_1_pain_4": {"en": "Different data formats make integration and analysis more difficult.", "vi": "Các định dạng dữ liệu khác nhau khiến việc tích hợp và phân tích trở nên khó khăn hơn.", "it": "Format diversi di dati rendono l'integrazione e l'analisi più difficili.", "fr": "Différents formats de données rendent l'intégration et l'analyse plus difficiles.", "de": "Verschiedene Datenformate erschweren die Integration und Analyse."},
+    "persona_1_need_1": {"en": "Reliable and structured data that can be filtered by country, region, year, antigen, and disease type.", "vi": "Dữ liệu đáng tin cậy và có cấu trúc có thể lọc theo quốc gia, khu vực, năm, kháng nguyên và loại bệnh.", "it": "Dati affidabili e strutturati filtrabili per paese, regione, anno, antigene e tipo di malattia.", "fr": "Des données fiables et structurées pouvant être filtrées par pays, région, année, antigène et type de maladie.", "de": "Zuverlässige und strukturierte Daten, die nach Land, Region, Jahr, Antigen und Krankheitstyp gefiltert werden können."},
+    "persona_1_need_2": {"en": "Analytical tools and visualisations to compare vaccination rates, disease trends, and health outcomes.", "vi": "Các công cụ phân tích và hình ảnh hóa để so sánh tỷ lệ tiêm chủng, xu hướng bệnh và kết quả sức khỏe.", "it": "Strumenti analitici e visualizzazioni per confrontare tassi di vaccinazione, tendenze delle malattie e risultati sanitari.", "fr": "Outils analytiques et visualisations pour comparer les taux de vaccination, les tendances de la maladie et les résultats de santé.", "de": "Analytische Werkzeuge und Visualisierungen, um Impfraten, Krankheitsverläufe und Gesundheitsergebnisse zu vergleichen."},
+    "persona_1_need_3": {"en": "A user-friendly dashboard with clear filters, sorting, and key insights.", "vi": "Bảng điều khiển thân thiện với người dùng có bộ lọc rõ ràng, sắp xếp và thông tin chính.", "it": "Una dashboard user-friendly con filtri chiari, ordinamento e informazioni chiave.", "fr": "Un tableau de bord convivial avec des filtres clairs, un tri et des informations clés.", "de": "Ein benutzerfreundliches Dashboard mit klaren Filtern, Sortierung und wichtigen Erkenntnissen."},
+    "persona_1_need_4": {"en": "Export or sharing features for collaboration with research teams and stakeholders.", "vi": "Tính năng xuất hoặc chia sẻ để hợp tác với các nhóm nghiên cứu và các bên liên quan.", "it": "Funzionalità di esportazione o condivisione per la collaborazione con team di ricerca e stakeholder.", "fr": "Fonctionnalités d'exportation ou de partage pour collaborer avec des équipes de recherche et des parties prenantes.", "de": "Export- oder Freigabefunktionen für die Zusammenarbeit mit Forschungsteams und Interessengruppen."},
+    "persona_1_motivation_title": {"en": "Motivation:", "vi": "Động lực:", "it": "Motivazione:", "fr": "Motivation :", "de": "Motivation:"},
+    "persona_1_motivation": {"en": "She is motivated by improving global health outcomes, reducing health disparities, and supporting evidence-based vaccination strategies for underserved populations.", "vi": "Cô ấy được thúc đẩy bởi việc cải thiện kết quả sức khỏe toàn cầu, giảm bất bình đẳng y tế và hỗ trợ chiến lược tiêm chủng dựa trên bằng chứng cho các nhóm dân cư bị thiệt thòi.", "it": "È motivata a migliorare i risultati sanitari globali, ridurre le disparità di salute e supportare strategie vaccinali basate sulle prove per le popolazioni svantaggiate.", "fr": "Elle est motivée par l'amélioration des résultats de santé mondiaux, la réduction des inégalités en matière de santé et le soutien de stratégies vaccinales fondées sur des preuves pour les populations défavorisées.", "de": "Sie ist motiviert, globale Gesundheitsergebnisse zu verbessern, gesundheitliche Ungleichheiten zu verringern und evidenzbasierte Impfstrategien für benachteiligte Bevölkerungsgruppen zu unterstützen."},
+    "persona_1_goals_title": {"en": "Goals", "vi": "Mục tiêu", "it": "Obiettivi", "fr": "Objectifs", "de": "Ziele"},
+    "persona_1_goal_1": {"en": "Access up-to-date vaccination data across countries and regions to compare trends and evaluate campaign effectiveness.", "vi": "Truy cập dữ liệu tiêm chủng mới nhất trên các quốc gia và khu vực để so sánh xu hướng và đánh giá hiệu quả chiến dịch.", "it": "Accedere ai dati vaccinali aggiornati tra paesi e regioni per confrontare le tendenze e valutare l'efficacia delle campagne.", "fr": "Accéder à des données de vaccination à jour par pays et régions pour comparer les tendances et évaluer l'efficacité des campagnes.", "de": "Zugriff auf aktuelle Impfdaten für Länder und Regionen, um Trends zu vergleichen und die Wirksamkeit von Kampagnen zu bewerten."},
+    "persona_1_goal_2": {"en": "Generate evidence-based insights to support public health policies and immunisation strategies.", "vi": "Tạo ra những hiểu biết dựa trên bằng chứng để hỗ trợ chính sách y tế cộng đồng và chiến lược tiêm chủng.", "it": "Generare approfondimenti basati su prove per supportare le politiche di salute pubblica e le strategie di immunizzazione.", "fr": "Générer des informations factuelles pour soutenir les politiques de santé publique et les stratégies d'immunisation.", "de": "Evidenzbasierte Erkenntnisse gewinnen, um Gesundheitspolitik und Impfstrategien zu unterstützen."},
+    "persona_1_goal_3": {"en": "Track long-term impacts of vaccination programs on disease prevalence and health outcomes.", "vi": "Theo dõi tác động lâu dài của các chương trình tiêm chủng đối với tỷ lệ bệnh tật và kết quả sức khỏe.", "it": "Monitorare gli impatti a lungo termine dei programmi vaccinali sulla prevalenza delle malattie e sui risultati sanitari.", "fr": "Suivre les impacts à long terme des programmes de vaccination sur la prévalence des maladies et les résultats de santé.", "de": "Langfristige Auswirkungen von Impfprogrammen auf Krankheitsprävalenz und Gesundheitsergebnisse verfolgen."},
+    "persona_1_pain_title": {"en": "Pain Points", "vi": "Nỗi đau", "it": "Punti dolenti", "fr": "Points de douleur", "de": "Schmerzpunkte"},
+    "persona_1_pain_1": {"en": "Vaccination data is difficult to access, filter, and compare across multiple sources.", "vi": "Dữ liệu tiêm chủng khó truy cập, lọc và so sánh qua nhiều nguồn.", "it": "I dati vaccinali sono difficili da accedere, filtrare e confrontare tra più fonti.", "fr": "Les données de vaccination sont difficiles à accéder, filtrer et comparer entre plusieurs sources.", "de": "Impfdaten sind schwer zugänglich, zu filtern und zwischen mehreren Quellen zu vergleichen."},
+    "persona_1_pain_2": {"en": "Data quality can be inconsistent, outdated, incomplete, or fragmented.", "vi": "Chất lượng dữ liệu có thể không nhất quán, lỗi thời, thiếu hoặc phân mảnh.", "it": "La qualità dei dati può essere incoerente, obsoleta, incompleta o frammentata.", "fr": "La qualité des données peut être incohérente, obsolète, incomplète ou fragmentée.", "de": "Datenqualität kann inkonsistent, veraltet, unvollständig oder fragmentiert sein."},
+    "persona_1_pain_3": {"en": "Complex datasets are hard to visualise and explain clearly to policymakers.", "vi": "Các bộ dữ liệu phức tạp khó trực quan hóa và giải thích rõ ràng cho các nhà hoạch định chính sách.", "it": "I dataset complessi sono difficili da visualizzare e spiegare chiaramente ai responsabili politici.", "fr": "Les ensembles de données complexes sont difficiles à visualiser et à expliquer clairement aux décideurs.", "de": "Komplexe Datensätze sind schwer zu visualisieren und Entscheidungsträgern klar zu erklären."},
+    "persona_1_needs_title": {"en": "Needs", "vi": "Nhu cầu", "it": "Bisogni", "fr": "Besoins", "de": "Bedürfnisse"},
+    "persona_1_need_1": {"en": "Reliable and structured data that can be filtered by country, region, year, antigen, and disease type.", "vi": "Dữ liệu đáng tin cậy và có cấu trúc có thể lọc theo quốc gia, khu vực, năm, kháng nguyên và loại bệnh.", "it": "Dati affidabili e strutturati filtrabili per paese, regione, anno, antigene e tipo di malattia.", "fr": "Des données fiables et structurées pouvant être filtrées par pays, région, année, antigène et type de maladie.", "de": "Zuverlässige und strukturierte Daten, die nach Land, Region, Jahr, Antigen und Krankheitstyp gefiltert werden können."},
+    "persona_1_need_2": {"en": "Analytical tools and visualisations to compare vaccination rates, disease trends, and health outcomes.", "vi": "Các công cụ phân tích và hình ảnh hóa để so sánh tỷ lệ tiêm chủng, xu hướng bệnh và kết quả sức khỏe.", "it": "Strumenti analitici e visualizzazioni per confrontare tassi di vaccinazione, tendenze delle malattie e risultati sanitari.", "fr": "Outils analytiques et visualisations pour comparer les taux de vaccination, les tendances de la maladie et les résultats de santé.", "de": "Analytische Werkzeuge und Visualisierungen, um Impfraten, Krankheitsverläufe und Gesundheitsergebnisse zu vergleichen."},
+    "persona_1_need_3": {"en": "A user-friendly dashboard with clear filters, sorting, and key insights.", "vi": "Bảng điều khiển thân thiện với người dùng có bộ lọc rõ ràng, sắp xếp và thông tin chính.", "it": "Una dashboard user-friendly con filtri chiari, ordinamento e informazioni chiave.", "fr": "Un tableau de bord convivial avec des filtres clairs, un tri et des informations clés.", "de": "Ein benutzerfreundliches Dashboard mit klaren Filtern, Sortierung und wichtigen Erkenntnissen."},
+    "persona_1_motivation_title": {"en": "Motivation:", "vi": "Động lực:", "it": "Motivazione:", "fr": "Motivation :", "de": "Motivation:"},
+    "persona_1_motivation": {"en": "She is motivated by improving global health outcomes, reducing health disparities, and supporting evidence-based vaccination strategies for underserved populations.", "vi": "Cô ấy được thúc đẩy bởi việc cải thiện kết quả sức khỏe toàn cầu, giảm bất bình đẳng y tế và hỗ trợ chiến lược tiêm chủng dựa trên bằng chứng cho các nhóm dân cư bị thiệt thòi.", "it": "È motivata a migliorare i risultati sanitari globali, ridurre le disparità di salute e supportare strategie vaccinali basate sulle prove per le popolazioni svantaggiate.", "fr": "Elle est motivée par l'amélioration des résultats de santé mondiaux, la réduction des inégalités en matière de santé et le soutien de stratégies vaccinales fondées sur des preuves pour les populations défavorisées.", "de": "Sie ist motiviert, globale Gesundheitsergebnisse zu verbessern, gesundheitliche Ungleichheiten zu verringern und evidenzbasierte Impfstrategien für benachteiligte Bevölkerungsgruppen zu unterstützen."},
+    "persona_2_title":      {"en": "Economic Policymakers", "vi": "Những nhà hoạch định chính sách kinh tế", "it": "Responsabili delle politiche economiche", "fr": "Décideurs politiques économiques", "de": "Wirtschaftspolitische Entscheidungsträger"},
+    "persona_2_quote": {
+        "en": "I need reliable vaccination and infection data to assess risks and make informed economic and policy decisions.",
+        "vi": "Tôi cần dữ liệu tiêm chủng và nhiễm bệnh đáng tin cậy để đánh giá rủi ro và đưa ra quyết định kinh tế và chính sách thông minh.",
+        "it": "Ho bisogno di dati affidabili sulla vaccinazione e le infezioni per valutare i rischi e prendere decisioni economiche e politiche informate.",
+        "fr": "J'ai besoin de données fiables sur la vaccination et les infections pour évaluer les risques et prendre des décisions économiques et politiques éclairées.",
+        "de": "Ich benötige zuverlässige Daten zu Impfungen und Infektionen, um Risiken zu bewerten und fundierte wirtschaftliche und politische Entscheidungen zu treffen."
+    },
+    "persona_2_role": {
+        "en": "Economic Policy Advisor / Business Strategy Manager",
+        "vi": "Cố vấn chính sách kinh tế / Quản lý chiến lược doanh nghiệp",
+        "it": "Consulente di politica economica / Responsabile strategia aziendale",
+        "fr": "Conseiller en politique économique / Responsable stratégie commerciale",
+        "de": "Berater für Wirtschaftspolitik / Manager für Geschäftsstrategie"
+    },
+    "persona_2_education": {
+        "en": "Master’s Degree in Economics / Public Policy",
+        "vi": "Thạc sĩ Kinh tế / Chính sách công",
+        "it": "Master in Economia / Politiche pubbliche",
+        "fr": "Master en économie / politiques publiques",
+        "de": "Master-Abschluss in Wirtschaftswissenschaften / öffentliche Politik"
+    },
+    "persona_2_location": {
+        "en": "Urban area (e.g., Ho Chi Minh City, Vietnam)",
+        "vi": "Khu vực đô thị (ví dụ: TP.HCM, Việt Nam)",
+        "it": "Area urbana (ad es. Ho Chi Minh City, Vietnam)",
+        "fr": "Zone urbaine (par ex. Hô Chi Minh-Ville, Vietnam)",
+        "de": "Urbanes Gebiet (z. B. Ho-Chi-Minh-Stadt, Vietnam)"
+    },
+    "persona_2_experience": {
+        "en": "Strong background in data analysis, economic planning, and decision-making.",
+        "vi": "Nền tảng vững chắc về phân tích dữ liệu, lập kế hoạch kinh tế và ra quyết định.",
+        "it": "Solida esperienza in analisi dei dati, pianificazione economica e presa di decisioni.",
+        "fr": "Solide expérience en analyse de données, planification économique et prise de décision.",
+        "de": "Starker Hintergrund in Datenanalyse, Wirtschaftsplanung und Entscheidungsfindung."
+    },
+    "persona_2_summary": {
+        "en": "Regularly reviews data from government reports, dashboards, and international sources to monitor public health trends and their economic impact.",
+        "vi": "Thường xuyên xem dữ liệu từ báo cáo chính phủ, bảng điều khiển và nguồn quốc tế để giám sát xu hướng sức khỏe cộng đồng và tác động kinh tế của chúng.",
+        "it": "Esamina regolarmente i dati di rapporti governativi, dashboard e fonti internazionali per monitorare le tendenze della salute pubblica e il loro impatto economico.",
+        "fr": "Consulte régulièrement les données des rapports gouvernementaux, des tableaux de bord et des sources internationales pour surveiller les tendances de santé publique et leur impact économique.",
+        "de": "Überprüft regelmäßig Daten aus Regierungsberichten, Dashboards und internationalen Quellen, um Gesundheitstrends und ihre wirtschaftlichen Auswirkungen zu verfolgen."
+    },
+    "persona_2_goals_title": {"en": "Goals", "vi": "Mục tiêu", "it": "Obiettivi", "fr": "Objectifs", "de": "Ziele"},
+    "persona_2_goal_1": {"en": "Analyze relationships between vaccination rates and economic performance.", "vi": "Phân tích mối quan hệ giữa tỷ lệ tiêm chủng và hiệu suất kinh tế.", "it": "Analizzare le relazioni tra i tassi di vaccinazione e le prestazioni economiche.", "fr": "Analyser les relations entre les taux de vaccination et la performance économique.", "de": "Analyse der Beziehungen zwischen Impfraten und wirtschaftlicher Leistung."},
+    "persona_2_goal_2": {"en": "Compare data across countries, regions, and time periods.", "vi": "So sánh dữ liệu giữa các quốc gia, khu vực và khoảng thời gian.", "it": "Confrontare i dati tra paesi, regioni e periodi temporali.", "fr": "Comparer les données entre pays, régions et périodes.", "de": "Daten über Länder, Regionen und Zeiträume hinweg vergleichen."},
+    "persona_2_goal_3": {"en": "Identify trends that may impact business operations or national policy.", "vi": "Xác định các xu hướng có thể ảnh hưởng đến hoạt động kinh doanh hoặc chính sách quốc gia.", "it": "Individuare le tendenze che possono influire sulle operazioni aziendali o sulla politica nazionale.", "fr": "Identifier les tendances susceptibles d'avoir un impact sur les opérations commerciales ou la politique nationale.", "de": "Trends identifizieren, die Geschäftsabläufe oder nationale Politik beeinflussen können."},
+    "persona_2_pain_title": {"en": "Pain Points", "vi": "Nỗi đau", "it": "Punti dolenti", "fr": "Points de douleur", "de": "Schmerzpunkte"},
+    "persona_2_pain_1": {"en": "Lack of integration between health and economic data.", "vi": "Thiếu tích hợp giữa dữ liệu sức khỏe và kinh tế.", "it": "Manca l'integrazione tra dati sanitari ed economici.", "fr": "Manque d'intégration entre les données de santé et économiques.", "de": "Mangelnde Integration zwischen Gesundheits- und Wirtschaftsdaten."},
+    "persona_2_pain_2": {"en": "Difficulty extracting actionable insights from raw or unstructured data.", "vi": "Khó khăn trong việc trích xuất những thông tin có thể hành động từ dữ liệu thô hoặc không cấu trúc.", "it": "Difficoltà a estrarre approfondimenti utilizzabili da dati grezzi o non strutturati.", "fr": "Difficulté à extraire des informations exploitables à partir de données brutes ou non structurées.", "de": "Schwierigkeiten, umsetzbare Erkenntnisse aus Roh- oder unstrukturierten Daten zu gewinnen."},
+    "persona_2_pain_3": {"en": "Time constraints—needs quick access to relevant insights.", "vi": "Hạn chế về thời gian — cần truy cập nhanh các thông tin phù hợp.", "it": "Vincoli di tempo: necessita di accesso rapido a informazioni pertinenti.", "fr": "Contraintes de temps : besoin d'un accès rapide aux informations pertinentes.", "de": "Zeitdruck – benötigt schnellen Zugriff auf relevante Erkenntnisse."},
+    "persona_2_needs_title": {"en": "Needs", "vi": "Nhu cầu", "it": "Bisogni", "fr": "Besoins", "de": "Bedürfnisse"},
+    "persona_2_need_1": {"en": "Advanced filtering (by country, year, economic phase, disease type).", "vi": "Bộ lọc nâng cao (theo quốc gia, năm, giai đoạn kinh tế, loại bệnh).", "it": "Filtri avanzati (per paese, anno, fase economica, tipo di malattia).", "fr": "Filtrage avancé (par pays, année, phase économique, type de maladie).", "de": "Erweiterte Filter (nach Land, Jahr, Wirtschaftsphase, Krankheitstyp)."},
+    "persona_2_need_2": {"en": "Comparative visualizations (e.g., multi-country trend analysis).", "vi": "Hình ảnh so sánh (ví dụ: phân tích xu hướng đa quốc gia).", "it": "Visualizzazioni comparative (ad es. analisi delle tendenze tra paesi).", "fr": "Visualisations comparatives (par exemple, analyse des tendances multi-pays).", "de": "Vergleichende Visualisierungen (z. B. mehrländer Trendanalysen)."},
+    "persona_2_need_3": {"en": "Clear correlation between health data and economic indicators.", "vi": "Mối tương quan rõ ràng giữa dữ liệu sức khỏe và chỉ số kinh tế.", "it": "Chiarezza sulla correlazione tra dati sanitari e indicatori economici.", "fr": "Corrélation claire entre les données de santé et les indicateurs économiques.", "de": "Klare Korrelation zwischen Gesundheitsdaten und Wirtschaftsindikatoren."},
+    "persona_2_motivation_title": {"en": "Motivation:", "vi": "Động lực:", "it": "Motivazione:", "fr": "Motivation :", "de": "Motivation:"},
+    "persona_2_motivation": {"en": "I am responsible for making decisions that can impact businesses, economies, and communities. I need data that is not only accurate but also structured in a way that allows me to quickly identify risks, trends, and opportunities.", "vi": "Tôi chịu trách nhiệm đưa ra các quyết định có thể ảnh hưởng đến doanh nghiệp, nền kinh tế và cộng đồng. Tôi cần dữ liệu không chỉ chính xác mà còn được cấu trúc để tôi nhanh chóng xác định rủi ro, xu hướng và cơ hội.", "it": "Sono responsabile di decisioni che possono avere un impatto su imprese, economie e comunità. Ho bisogno di dati non solo accurati ma anche strutturati in modo da poter identificare rapidamente rischi, tendenze e opportunità.", "fr": "Je suis responsable de décisions qui peuvent avoir un impact sur les entreprises, les économies et les communautés. J'ai besoin de données non seulement précises, mais aussi structurées de manière à identifier rapidement les risques, les tendances et les opportunités.", "de": "Ich bin verantwortlich für Entscheidungen, die Unternehmen, Volkswirtschaften und Gemeinschaften beeinflussen können. Ich benötige Daten, die nicht nur genau, sondern auch so strukturiert sind, dass ich Risiken, Trends und Chancen schnell erkennen kann."},
+    "persona_2_li1": {
+        "en": "Support decision-making with reliable, data-driven insights.", "vi": "Hỗ trợ quyết định với những hiểu biết dựa trên dữ liệu đáng tin cậy.", "it": "Supportare il processo decisionale con approfondimenti basati sui dati.", "fr": "Soutenir la prise de décision avec des informations fiables et basées sur les données.", "de": "Entscheidungsfindung mit zuverlässigen, datenbasierten Erkenntnissen unterstützen."
+    },
+    "persona_2_li2": {
+        "en": "Quickly assess risk levels in different markets or populations.", "vi": "Đánh giá nhanh mức độ rủi ro ở các thị trường hoặc nhóm dân cư khác nhau.", "it": "Valutare rapidamente i livelli di rischio in diversi mercati o popolazioni.", "fr": "Évaluer rapidement les niveaux de risque dans différents marchés ou populations.", "de": "Risikoniveaus in verschiedenen Märkten oder Bevölkerungsgruppen schnell einschätzen."
+    },
+    "persona_2_li3": {
+        "en": "Compare data across countries, regions, and time periods.", "vi": "So sánh dữ liệu giữa các quốc gia, khu vực và thời điểm.", "it": "Confrontare i dati tra paesi, regioni e periodi temporali.", "fr": "Comparer les données entre pays, régions et périodes.", "de": "Daten über Länder, Regionen und Zeiträume hinweg vergleichen."
+    },
+    "persona_1_p": {
+        "en": "Students, educators and early-stage researchers need a reliable way to explore how vaccination coverage, disease incidence and economic indicators relate across places and years.",
+        "vi": "Sinh viên, giáo viên và nhà nghiên cứu giai đoạn đầu cần cách đáng tin cậy để khám phá mối quan hệ giữa độ phủ tiêm chủng, tỷ lệ mắc bệnh và chỉ số kinh tế.",
+        "it": "Studenti, educatori e ricercatori nelle prime fasi hanno bisogno di un modo affidabile per esplorare le relazioni tra copertura vaccinale, incidenza delle malattie e indicatori economici.",
+        "fr": "Les étudiants, éducateurs et chercheurs en début de carrière ont besoin d'un moyen fiable pour explorer comment la couverture vaccinale, l'incidence des maladies et les indicateurs économiques se rapportent.",
+        "de": "Studenten, Pädagogen und Anfangsforscher brauchen einen zuverlässigen Weg, um Impfabdeckung, Krankheitsinzidenz und Wirtschaftsindikatoren zu erkunden.",
+    },
+    "persona_1_li1": {
+        "en": "Compare vaccination and infection trends without manually cleaning raw datasets.",
+        "vi": "So sánh xu hướng tiêm chủng và nhiễm bệnh mà không cần làm sạch tập dữ liệu thô thủ công.",
+        "it": "Confronta le tendenze di vaccinazione e infezione senza pulire manualmente i dataset.",
+        "fr": "Comparez les tendances de vaccination et d'infection sans nettoyer manuellement les données.",
+        "de": "Vergleiche Impf- und Infektionstrends ohne manuelle Bereinigung von Rohdaten.",
+    },
+    "persona_1_li2": {
+        "en": "Identify countries or regions that meet coverage targets or show signs of improvement.",
+        "vi": "Xác định các quốc gia hoặc khu vực đạt mục tiêu độ phủ hoặc có dấu hiệu cải thiện.",
+        "it": "Identifica i paesi o le regioni che raggiungono gli obiettivi di copertura o mostrano segni di miglioramento.",
+        "fr": "Identifiez les pays ou régions qui atteignent les objectifs de couverture ou montrent des signes d'amélioration.",
+        "de": "Identifiziere Länder oder Regionen, die Abdeckungsziele erreichen oder Verbesserungszeichen zeigen.",
+    },
+    "persona_1_li3": {
+        "en": "Use simple, transparent views for assignments, reports and evidence-based discussion.",
+        "vi": "Sử dụng các chế độ xem đơn giản, minh bạch cho bài tập, báo cáo và thảo luận.",
+        "it": "Utilizza visualizzazioni semplici e trasparenti per compiti, report e discussioni.",
+        "fr": "Utilisez des vues simples et transparentes pour les devoirs, les rapports et les discussions.",
+        "de": "Verwende einfache, transparente Ansichten für Aufgaben, Berichte und evidenzbasierte Diskussionen.",
+    },
+    "persona_2_title":      {"en": "Policy Planners and Community Advocates", "vi": "Nhà hoạch định Chính sách và Người vận động Cộng đồng", "it": "Pianificatori di Politiche e Sostenitori della Comunità", "fr": "Planificateurs de Politiques et Défenseurs Communautaires", "de": "Politikplaner und Gemeinschaftsvertreter"},
+    "persona_2_p": {
+        "en": "Health program planners and community advocates need clear evidence to explain where preventable disease risks remain high and where immunisation progress needs support.",
+        "vi": "Người lập kế hoạch chương trình y tế và người vận động cộng đồng cần bằng chứng rõ ràng để giải thích nơi nào rủi ro bệnh còn cao và nơi nào tiến trình tiêm chủng cần hỗ trợ.",
+        "it": "I pianificatori di programmi sanitari hanno bisogno di prove chiare per spiegare dove i rischi di malattie prevenibili rimangono elevati e dove è necessario supporto.",
+        "fr": "Les planificateurs de programmes de santé ont besoin de preuves claires pour expliquer où les risques de maladies évitables restent élevés et où les progrès de l'immunisation nécessitent du soutien.",
+        "de": "Gesundheitsprogrammplaner brauchen klare Beweise, um zu erklären, wo Risiken vermeidbarer Krankheiten hoch bleiben und wo Immunisierungsfortschritte Unterstützung benötigen.",
+    },
+    "persona_2_li1": {
+        "en": "Review trends by region, country and economic context to support practical recommendations.",
+        "vi": "Xem xét xu hướng theo khu vực, quốc gia và bối cảnh kinh tế để hỗ trợ các khuyến nghị thực tế.",
+        "it": "Esamina le tendenze per regione, paese e contesto economico per supportare raccomandazioni pratiche.",
+        "fr": "Examinez les tendances par région, pays et contexte économique pour soutenir des recommandations pratiques.",
+        "de": "Überprüfe Trends nach Region, Land und wirtschaftlichem Kontext zur Unterstützung praktischer Empfehlungen.",
+    },
+    "persona_2_li2": {
+        "en": "Spot underserved areas where vaccination coverage may not be keeping pace with public health targets.",
+        "vi": "Xác định các khu vực còn thiếu nơi độ phủ tiêm chủng chưa theo kịp mục tiêu y tế công cộng.",
+        "it": "Individua le aree svantaggiate dove la copertura vaccinale non è al passo con gli obiettivi di salute pubblica.",
+        "fr": "Repérez les zones mal desservies où la couverture vaccinale ne suit pas les objectifs de santé publique.",
+        "de": "Identifiziere unterversorgte Gebiete, in denen die Impfabdeckung nicht mit öffentlichen Gesundheitszielen Schritt hält.",
+    },
+    "persona_2_li3": {
+        "en": "Use accessible summaries when preparing briefings, outreach materials or stakeholder discussions.",
+        "vi": "Sử dụng các bản tóm tắt dễ tiếp cận khi chuẩn bị tóm tắt, tài liệu tiếp cận hoặc thảo luận với các bên liên quan.",
+        "it": "Utilizza riepiloghi accessibili quando prepari briefing, materiali di sensibilizzazione o discussioni.",
+        "fr": "Utilisez des résumés accessibles lors de la préparation de résumés, de documents de sensibilisation ou de discussions.",
+        "de": "Verwende zugängliche Zusammenfassungen bei der Vorbereitung von Briefings, Outreach-Materialien oder Stakeholder-Diskussionen.",
+    },
+    "about_us_title": {"en": "About Us",  "vi": "Về chúng tôi", "it": "Chi siamo",    "fr": "À propos de nous", "de": "Über uns"},
+    "about_us_p1": {
+        "en": "We are a student project team building ImmuniData as a practical data explorer for preventable disease information. Our work brings together public datasets, simple interaction design and focused analysis pages.",
+        "vi": "Chúng tôi là nhóm dự án sinh viên xây dựng ImmuniData như một công cụ khám phá dữ liệu thực tế về thông tin bệnh có thể phòng ngừa. Công việc của chúng tôi kết hợp các tập dữ liệu công khai, thiết kế tương tác đơn giản và các trang phân tích tập trung.",
+        "it": "Siamo un team studentesco che costruisce ImmuniData come esploratore pratico di dati sulle malattie prevenibili, unendo dataset pubblici e design semplice.",
+        "fr": "Nous sommes une équipe étudiante qui construit ImmuniData comme explorateur de données pratique pour les informations sur les maladies évitables.",
+        "de": "Wir sind ein studentisches Projektteam, das ImmuniData als praktischen Datenkurkder für Informationen über vermeidbare Krankheiten aufbaut.",
+    },
+    "about_us_p2": {
+        "en": "The goal is to help users ask better questions about immunisation progress, disease burden and the social conditions that shape health outcomes.",
+        "vi": "Mục tiêu là giúp người dùng đặt câu hỏi tốt hơn về tiến trình tiêm chủng, gánh nặng bệnh tật và các điều kiện xã hội hình thành kết quả sức khỏe.",
+        "it": "L'obiettivo è aiutare gli utenti a porre domande migliori sui progressi dell'immunizzazione, il carico delle malattie e le condizioni sociali che plasmano i risultati sanitari.",
+        "fr": "L'objectif est d'aider les utilisateurs à poser de meilleures questions sur les progrès de l'immunisation, le fardeau des maladies et les conditions sociales.",
+        "de": "Das Ziel ist es, Benutzern zu helfen, bessere Fragen über Impfortschritte, Krankheitsbelastung und die sozialen Bedingungen zu stellen, die Gesundheitsergebnisse prägen.",
+    },
+}
+
+# ── DB-sourced value translations ──────────────────────────────────────────────
+# Keys are the exact English strings stored in the database.
+# "en" is omitted — get_db_translation() returns the original value for English.
+
+ECONOMY_TRANSLATIONS = {
+    "High income":         {"vi": "Thu nhập cao",            "it": "Reddito alto",        "fr": "Revenu élevé",                   "de": "Hohe Einkommensgruppe"},
+    "Upper middle income": {"vi": "Thu nhập trung bình cao", "it": "Reddito medio-alto",  "fr": "Revenu intermédiaire supérieur", "de": "Oberes mittleres Einkommen"},
+    "Lower middle income": {"vi": "Thu nhập trung bình thấp","it": "Reddito medio-basso", "fr": "Revenu intermédiaire inférieur", "de": "Unteres mittleres Einkommen"},
+    "Low income":          {"vi": "Thu nhập thấp",           "it": "Basso reddito",       "fr": "Faible revenu",                  "de": "Niedriges Einkommen"},
+    "Least developed":     {"vi": "Kém phát triển nhất",     "it": "Meno sviluppati",     "fr": "Moins développés",               "de": "Am wenigsten entwickelt"},
+    # Capitalised variants in case DB uses title-case
+    "High Income":         {"vi": "Thu nhập cao",            "it": "Reddito alto",        "fr": "Revenu élevé",                   "de": "Hohe Einkommensgruppe"},
+    "Upper Middle Income": {"vi": "Thu nhập trung bình cao", "it": "Reddito medio-alto",  "fr": "Revenu intermédiaire supérieur", "de": "Oberes mittleres Einkommen"},
+    "Lower Middle Income": {"vi": "Thu nhập trung bình thấp","it": "Reddito medio-basso", "fr": "Revenu intermédiaire inférieur", "de": "Unteres mittleres Einkommen"},
+    "Low Income":          {"vi": "Thu nhập thấp",           "it": "Basso reddito",       "fr": "Faible revenu",                  "de": "Niedriges Einkommen"},
+    "Least Developed":     {"vi": "Kém phát triển nhất",     "it": "Meno sviluppati",     "fr": "Moins développés",               "de": "Am wenigsten entwickelt"},
+}
+
+REGION_TRANSLATIONS = {
+    "Africa":                {"vi": "Châu Phi",                "it": "Africa",                 "fr": "Afrique",                 "de": "Afrika"},
+    "Americas":              {"vi": "Châu Mỹ",                 "it": "Americhe",               "fr": "Amériques",               "de": "Amerika"},
+    "South-East Asia":       {"vi": "Đông Nam Á",              "it": "Asia sud-orientale",     "fr": "Asie du Sud-Est",         "de": "Südostasien"},
+    "Europe":                {"vi": "Châu Âu",                 "it": "Europa",                 "fr": "Europe",                  "de": "Europa"},
+    "Eastern Mediterranean": {"vi": "Địa Trung Hải phía Đông","it": "Mediterraneo orientale", "fr": "Méditerranée orientale",  "de": "Östliches Mittelmeer"},
+    "Western Pacific":       {"vi": "Tây Thái Bình Dương",    "it": "Pacifico occidentale",   "fr": "Pacifique occidental",    "de": "Westpazifik"},
+}
+
+# WHO-standard disease names (from Infection_Type.description in DB)
+INFECTION_TRANSLATIONS = {
+    "Measles":               {"vi": "Sởi",                  "it": "Morbillo",              "fr": "Rougeole",              "de": "Masern"},
+    "Rubella":               {"vi": "Rubella (Sởi Đức)",    "it": "Rosolia",               "fr": "Rubéole",               "de": "Röteln"},
+    "Pertussis":             {"vi": "Ho gà",                "it": "Pertosse",              "fr": "Coqueluche",            "de": "Keuchhusten"},
+    "Mumps":                 {"vi": "Quai bị",              "it": "Parotite",              "fr": "Oreillons",             "de": "Mumps"},
+    "Diphtheria":            {"vi": "Bạch hầu",             "it": "Difterite",             "fr": "Diphtérie",             "de": "Diphtherie"},
+    "Tetanus":               {"vi": "Uốn ván",              "it": "Tetano",                "fr": "Tétanos",               "de": "Tetanus"},
+    "Neonatal Tetanus":      {"vi": "Uốn ván sơ sinh",      "it": "Tetano neonatale",      "fr": "Tétanos néonatal",      "de": "Neugeborenen-Tetanus"},
+    "Polio":                 {"vi": "Bại liệt",             "it": "Polio",                 "fr": "Polio",                 "de": "Polio"},
+    "Hepatitis B":           {"vi": "Viêm gan B",           "it": "Epatite B",             "fr": "Hépatite B",            "de": "Hepatitis B"},
+    "Japanese Encephalitis": {"vi": "Viêm não Nhật Bản",    "it": "Encefalite giapponese", "fr": "Encéphalite japonaise", "de": "Japanische Enzephalitis"},
+    "Yellow Fever":          {"vi": "Sốt vàng da",          "it": "Febbre gialla",         "fr": "Fièvre jaune",          "de": "Gelbfieber"},
+    "Meningitis A":          {"vi": "Viêm màng não A",      "it": "Meningite A",           "fr": "Méningite A",           "de": "Meningitis A"},
+    "Cholera":               {"vi": "Tả",                   "it": "Colera",                "fr": "Choléra",               "de": "Cholera"},
+    "Typhoid":               {"vi": "Thương hàn",           "it": "Tifo",                  "fr": "Typhoïde",              "de": "Typhus"},
+    "Dengue":                {"vi": "Sốt xuất huyết",       "it": "Dengue",                "fr": "Dengue",                "de": "Dengue"},
+    "Malaria":               {"vi": "Sốt rét",              "it": "Malaria",               "fr": "Paludisme",             "de": "Malaria"},
+}
+
+
+def get_translation(key, lang="en"):
+    """Return translated UI string for key in lang. Falls back to English."""
+    row = TRANSLATIONS.get(key, {})
+    return row.get(lang) or row.get("en") or key
+
+
+def get_db_translation(value, lang="en", field_type="economy"):
+    """Translate a DB-sourced display value (economy phase, region name, infection name).
+
+    field_type: "economy" | "region" | "infection"
+    Returns the original value unchanged for English or if no translation exists.
+    """
+    if not value or lang == "en":
+        return value
+    mapping = {
+        "economy":   ECONOMY_TRANSLATIONS,
+        "region":    REGION_TRANSLATIONS,
+        "infection": INFECTION_TRANSLATIONS,
+    }.get(field_type, {})
+    return mapping.get(value, {}).get(lang, value)
