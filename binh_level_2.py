@@ -88,7 +88,7 @@ def get_page_html(form_data):
     applied_antigen_f = _get("applied_antigen")
     applied_year_f    = _get("applied_year")
     applied_threshold_f = _get("applied_threshold", "")
-    try:    applied_threshold = max(1, min(100, int(applied_threshold_f))) if applied_threshold_f else None
+    try:    applied_threshold = max(0, min(99, int(applied_threshold_f))) if applied_threshold_f else None
     except: applied_threshold = None
 
     antigen_f = _get("antigen")
@@ -503,7 +503,7 @@ def get_page_html(form_data):
                 f'</div>')
 
     def sel_threshold():
-        OPTS = [("—", "")] + [(f"{rate}%", str(rate)) for rate in range(50, 100)]
+        OPTS = [("—", "")] + [(f"{rate}%", str(rate)) for rate in range(0, 100)]
         label = f"{applied_threshold}%" if applied_threshold is not None else "—"
         cur   = str(applied_threshold) if applied_threshold is not None else ""
         opts  = ""
@@ -856,13 +856,6 @@ def get_page_html(form_data):
             <span class="how-title">{tr_("how_works_title")}</span>
             <p>{tr_("how_desc_vacc2")}</p>
         </div>
-    </div>
-    <div class="how-links">
-        <span class="how-hover">
-            <a href="#" class="how-link">{tr_("how_view_methodology")} -&gt;</a>
-            <span class="how-hover-panel">{tr_("how_popup_vacc2")}</span>
-        </span>
-        <a href="#" class="how-link">{tr_("how_data_dict")} -&gt;</a>
     </div>
 </div>
 

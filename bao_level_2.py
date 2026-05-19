@@ -625,13 +625,6 @@ def get_page_html(form_data):
             <p>{tr_("how_desc_inf2")}</p>
         </div>
     </div>
-    <div class="how-links">
-        <span class="how-hover">
-            <a href="#" class="how-link">{tr_("how_view_methodology")} -&gt;</a>
-            <span class="how-hover-panel">{tr_("how_popup_inf2")}</span>
-        </span>
-        <a href="#" class="how-link">{tr_("how_data_dict")} -&gt;</a>
-    </div>
 </div>
 
 {nav.get_footer_html(lang)}
