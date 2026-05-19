@@ -12,7 +12,6 @@ import binh_level_3
 import bao_level_1
 import bao_level_2
 import bao_level_3
-import nav
 
 
 PORT = 8000
@@ -25,7 +24,6 @@ pyhtml.MyRequestHandler.pages["/binh_page_3"] = binh_level_3
 pyhtml.MyRequestHandler.pages["/bao_page_1"] = bao_level_1
 pyhtml.MyRequestHandler.pages["/bao_page_2"] = bao_level_2
 pyhtml.MyRequestHandler.pages["/bao_page_3"] = bao_level_3
-pyhtml.MyRequestHandler.pages["/search"] = nav
 
 socketserver.TCPServer.allow_reuse_address = True
 
