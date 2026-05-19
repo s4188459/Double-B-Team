@@ -406,9 +406,9 @@ def get_page_html(form_data):
         saved_html = "".join(saved_parts)
     else:
         starter_views = [
-            ("BCG, 2022", apply_url("BCG", "2022")),
-            ("DTP3, 2020", apply_url("DTP3", "2020")),
-            ("MCV1, 2015", apply_url("MCV1", "2015")),
+            ("DTPCV1, 2022", apply_url("DTPCV1", "2022")),
+            ("MCV1, 2020",   apply_url("MCV1",   "2020")),
+            ("RCV1, 2018",   apply_url("RCV1",   "2018")),
         ]
         saved_html = "".join(f'<a class="saved-pill starter" href="{href}">{_html(label)}</a>' for label, href in starter_views)
         saved_html += f'<span class="empty-saved-note">{tr_("starter_note")}</span>'

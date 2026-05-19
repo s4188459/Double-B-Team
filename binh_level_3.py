@@ -22,10 +22,6 @@ def _esc(s):
     return str(s).replace("'", "''")
 
 
-# CSS class for coverage badge coloring
-def _cov_class(v):
-    if v is None: return "cov-mid"
-    return "cov-high" if v >= 90 else ("cov-mid" if v >= 70 else "cov-low")
 
 # CSS class for the improvement delta badge: green positive, red negative, gray zero
 def _delta_class(v):
@@ -121,7 +117,6 @@ def get_page_html(form_data):
 
     TOP_OPTS = [("5","Top 5"), ("10","Top 10"), ("20","Top 20"), ("50","Top 50"), ("100","Top 100")]
     TOP_MAP  = {v: int(v) for v, _ in TOP_OPTS}
-    top_n    = TOP_MAP.get(top_f, 10)
 
     try: applied_start_y = int(applied_start_year_f)
     except: applied_start_y = 2000
@@ -285,9 +280,8 @@ def get_page_html(form_data):
         saved_html = "".join(saved_parts)
     else:
         starter_views = [
-            ("BCG, 2000 to 2024, Top 10",  apply_url("BCG",  "2000", "2024", "10")),
-            ("DTP3, 2010 to 2024, Top 10", apply_url("DTP3", "2010", "2024", "10")),
-            ("MCV1, 2000 to 2024, Top 20", apply_url("MCV1", "2000", "2024", "20")),
+            ("DTPCV1, 2000 to 2024, Top 10", apply_url("DTPCV1", "2000", "2024", "10")),
+            ("MCV1, 2010 to 2024, Top 10",   apply_url("MCV1",   "2010", "2024", "10")),
         ]
         saved_html = "".join(f'<a class="saved-pill starter" href="{href}">{_html(label)}</a>' for label, href in starter_views)
         saved_html += f'<span class="empty-saved-note">{tr_("starter_note")}</span>'
@@ -458,7 +452,7 @@ def get_page_html(form_data):
             return title + '<div class="chart-msg">Not enough data — need at least 2 countries to display a chart</div>'
         max_abs = max(abs(r[4] or 0) for r in chart_rows) or 1
         out = ""
-        for i, (cname, rname, start_r, end_r, delta) in enumerate(chart_rows):
+        for i, (cname, _, _, _, delta) in enumerate(chart_rows):
             d = delta or 0
             w = round(abs(d) / max_abs * 100, 1)
             if d > 0:
