@@ -154,7 +154,7 @@ def get_page_html(form_data):
 
     # table and chart only activate when a specific antigen has been applied
     table_active    = bool(applied_antigen_f)
-    antigen_display = applied_antigen_f
+    antigen_display = next((name for aid, name in antigen_opts if aid == applied_antigen_f), applied_antigen_f)
 
     def inactive_msg():
         return f'<div class="chart-msg">{tr_("inactive_msg_vacc3")}</div>'
@@ -288,16 +288,16 @@ def get_page_html(form_data):
 
     filter_tags = ""
     if applied_antigen_f:
-        filter_tags += f'<span class="filter-tag">{applied_antigen_f}</span> '
+        filter_tags += f'<span class="filter-tag">{antigen_display}</span> '
     filter_tags += f'<span class="filter-tag">{applied_start_y} → {applied_end_y}</span> '
     filter_tags += f'<span class="filter-tag">Top {applied_top_n}</span> '
 
     def sel_antigen():
-        label = antigen_f if antigen_f else tr_("select_antigen")
+        label = next((name for aid, name in antigen_opts if aid == antigen_f), antigen_f) if antigen_f else tr_("select_antigen")
         opts = f'<a href="{url(antigen="", page="1")}" class="{"selected" if not antigen_f else ""}">{tr_("all_antigens")}</a>'
-        for aid, _ in antigen_opts:
+        for aid, aname in antigen_opts:
             sc = "selected" if aid == antigen_f else ""
-            opts += f'<a href="{url(antigen=aid, page="1")}" class="{sc}">{aid}</a>'
+            opts += f'<a href="{url(antigen=aid, page="1")}" class="{sc}">{aname}</a>'
         return (f'<div class="custom-select css-dropdown">'
                 f'<input type="checkbox" id="dd-antigen" class="dd-toggle">'
                 f'<label for="dd-antigen" class="dd-backdrop"></label>'
