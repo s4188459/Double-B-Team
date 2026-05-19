@@ -94,10 +94,6 @@ class FAQChatWidget:
             + self._build_suggestions_html() +
             """
             </div>
-            <form class="faq-chat-form" onsubmit="return false;">
-                <input id="faqChatInput" class="faq-chat-input" type="text" placeholder="Ask about filters, years, or usage..." aria-label="FAQ question input">
-                <button id="faqChatSend" class="faq-chat-submit" type="button">Send</button>
-            </form>
         </div>
     </div>
 
@@ -106,8 +102,6 @@ class FAQChatWidget:
             var bubble = document.querySelector('.faq-chat-bubble');
             var panel = document.querySelector('.faq-chat-panel');
             var closeBtn = document.querySelector('.faq-chat-close');
-            var input = document.querySelector('#faqChatInput');
-            var send = document.querySelector('#faqChatSend');
             var messages = document.querySelector('#faqChatMessages');
             var suggestions = document.querySelectorAll('.faq-suggestion');
 
@@ -142,34 +136,26 @@ class FAQChatWidget:
                 return null;
             }
 
-            function openPanel() {
-                panel.style.display = 'flex';
-                panel.setAttribute('aria-hidden', 'false');
-                input.focus();
-            }
-
-            function closePanel() {
-                panel.style.display = 'none';
-                panel.setAttribute('aria-hidden', 'true');
-            }
-
-            function handleSubmit() {
-                var raw = input.value || '';
-                var clean = safeText(raw);
-                if (!clean) {
-                    appendMessage('Please type a short question before sending.', 'bot');
-                    input.value = '';
-                    input.focus();
-                    return;
-                }
+            function handleQuery(text) {
+                var clean = safeText(text);
+                if (!clean) return;
                 appendMessage(clean, 'user');
-                input.value = '';
                 var answer = findAnswer(clean);
                 if (answer) {
                     appendMessage(answer, 'bot');
                 } else {
                     appendMessage('I am sorry, I do not know that specific answer. Try asking about filters, data pages, or charts.', 'bot');
                 }
+            }
+
+            function openPanel() {
+                panel.style.display = 'flex';
+                panel.setAttribute('aria-hidden', 'false');
+            }
+
+            function closePanel() {
+                panel.style.display = 'none';
+                panel.setAttribute('aria-hidden', 'true');
             }
 
             bubble.addEventListener('click', function() {
@@ -180,19 +166,10 @@ class FAQChatWidget:
                 }
             });
             closeBtn.addEventListener('click', closePanel);
-            send.addEventListener('click', handleSubmit);
             suggestions.forEach(function(button) {
                 button.addEventListener('click', function() {
-                    input.value = this.textContent;
-                    handleSubmit();
+                    handleQuery(this.textContent);
                 });
-            });
-
-            input.addEventListener('keydown', function(event) {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    handleSubmit();
-                }
             });
         })();
     </script>
