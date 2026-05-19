@@ -3,6 +3,7 @@ import re
 import urllib.parse
 import pyhtml
 import translations as tr
+from faq_widget import FAQChatWidget
 
 DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'immunisation.db')
 
@@ -142,8 +143,6 @@ def get_nav_html(active_page="/", lang="en", form_data=None):
     t_home      = tr.get_translation("nav_home",      lang)
     t_about     = tr.get_translation("nav_about",     lang)
     t_data      = tr.get_translation("nav_data",      lang)
-    t_resources = tr.get_translation("nav_resources", lang)
-    t_help      = tr.get_translation("nav_help",      lang)
     t_search    = tr.get_translation("nav_search",    lang)
 
     return f"""
@@ -177,9 +176,6 @@ def get_nav_html(active_page="/", lang="en", form_data=None):
                         {_dd("/bao_page_3",  "page_inf_improvement")}
                     </div>
                 </div>
-
-                <a href="#" class="nav-link">{t_resources}</a>
-                <a href="#" class="nav-link">{t_help}</a>
             </nav>
 
             <!-- Search bar -->
@@ -196,7 +192,10 @@ def get_nav_html(active_page="/", lang="en", form_data=None):
         </div>
 
     </header>
-    {_build_breadcrumb(active_page, lang, lang_suffix)}"""
+    {_build_breadcrumb(active_page, lang, lang_suffix)}
+
+    {FAQChatWidget().render()}
+    """
 
 # static footer with brand info, quick links, and legal text
 def get_footer_html(lang="en"):
@@ -250,20 +249,7 @@ def get_footer_html(lang="en"):
                 <a href="/bao_page_3{ls}" class="footer-link">{t("footer_economic")}</a>
             </div>
 
-            <!-- Help column -->
-            <div class="footer-col">
-                <div class="footer-col-title">{t("footer_col_help")}</div>
-                <a href="#" class="footer-link">{t("footer_faqs")}</a>
-                <a href="#" class="footer-link">{t("footer_contact")}</a>
-                <a href="#" class="footer-link">{t("footer_feedback")}</a>
-            </div>
 
-        </div>
-
-        <div class="footer-bottom">
-            <a href="#" class="footer-legal">{t("footer_privacy")}</a>
-            <span class="footer-legal-divider">|</span>
-            <a href="#" class="footer-legal">{t("footer_terms")}</a>
         </div>
     </footer>"""
 
