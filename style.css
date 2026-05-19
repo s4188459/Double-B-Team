@@ -1576,6 +1576,10 @@ a {
 .about-image-wrapper { display: flex; align-items: center; justify-content: center; min-height: 320px; }
 .about-image { width: 100%; max-width: 260px; height: auto; border-radius: 24px; object-fit: cover; box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12); }
 .about-us-copy { display: flex; flex-direction: column; justify-content: center; max-width: 430px; }
+.about-team-list { display: grid; gap: 10px; margin-top: 8px; }
+.about-team-member { display: grid; gap: 3px; padding: 12px 14px; border: 1px solid #d7e1ed; border-radius: 8px; background: #f8fbff; }
+.about-team-name { font-size: 15px; font-weight: 800; color: #10233f; }
+.about-team-id { font-size: 14px; color: #526579; }
 .about-image-placeholder { min-height: 110px; }
 .about-image-placeholder .placeholder-art { width: 82px; height: 74px; transform: scale(0.62); }
 @media (max-width: 900px) {
