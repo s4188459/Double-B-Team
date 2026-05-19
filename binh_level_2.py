@@ -205,20 +205,11 @@ def get_page_html(form_data):
         if _cr:
             country_display = str(_cr[0][0])
 
-    region_display = next((rname for rid, rname in region_opts if rid == applied_region_f), "") if applied_region_f else ""
-
     def _t1_title_base():
-        if not tables_active:
-            return "Countries by Coverage Rate"
-        thr = f"&ge;{applied_threshold}%" if applied_threshold is not None else ""
-        scope = country_display if (applied_country_f and country_display) else (f"{region_display} " if (applied_region_f and region_display) else "")
-        return f"{scope}Countries{(' with ' + thr + ' coverage') if thr else ''} — {antigen_display} ({applied_year_f})"
+        return "Country Meets Herd Immunity"
 
     def _t2_title():
-        if not tables_active:
-            return "Region Summary"
-        thr = f"&ge;{applied_threshold}%" if applied_threshold is not None else ""
-        return f"Region Summary{(' — Countries with ' + thr + ' coverage') if thr else ''} — {antigen_display} ({applied_year_f})"
+        return "Region Summary"
 
     def t1_country_miss_msg():
         name = country_display or applied_country_f
@@ -512,9 +503,7 @@ def get_page_html(form_data):
                 f'</div>')
 
     def sel_threshold():
-        OPTS = [("—", ""), ("50%", "50"), ("55%", "55"), ("60%", "60"),
-                ("65%", "65"), ("70%", "70"), ("75%", "75"), ("80%", "80"),
-                ("85%", "85"), ("90%", "90"), ("95%", "95")]
+        OPTS = [("—", "")] + [(f"{rate}%", str(rate)) for rate in range(50, 100)]
         label = f"{applied_threshold}%" if applied_threshold is not None else "—"
         cur   = str(applied_threshold) if applied_threshold is not None else ""
         opts  = ""
@@ -613,7 +602,7 @@ def get_page_html(form_data):
 
     # horizontal bar chart — shows all countries meeting minimum rate, scrollable if more than 15
     def chart1_html():
-        title = f'<div class="table-header-row"><span class="table-title">{_t1_title_base()}</span></div>'
+        title = f'<div class="table-header-row"><span class="table-title">Table 1: {_t1_title_base()}</span></div>'
         if not tables_active:
             return title + inactive_msg()
         if applied_country_f and cnt1 == 0:
