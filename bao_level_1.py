@@ -121,25 +121,33 @@ def get_page_html(form_data):
                 <div class="persona-panel persona-panel-2">
                     <div class="persona-card">
                         <div class="persona-image">
-                            <img src="/images/persona%202.png" alt="{tr_("persona_2_tab")}">
+                            <img src="/images/persona%202.png" alt="Kevin Nguyen">
                         </div>
                         <div class="persona-details">
                             <div class="persona-header">
-                                <h3>{tr_("persona_2_title")}</h3>
+                                <h3>Persona: Kevin Nguyen</h3>
                                 <div class="persona-tooltip">
                                     <span class="persona-tooltip-icon">!</span>
                                     <div class="persona-tooltip-text">{tr_("persona_2_tooltip")}</div>
                                 </div>
                             </div>
-                            <div class="persona-subtitle">{tr_("persona_2_group")}</div>
-                            <p class="persona-quote">"{tr_("persona_2_quote")}"</p>
-                            <div class="persona-meta">
-                                <span>{tr_("persona_2_role")}</span>
-                                <span>{tr_("persona_2_education")}</span>
-                                <span>{tr_("persona_2_location")}</span>
-                                <span>{tr_("persona_2_experience")}</span>
+                            <div class="persona-subtitle">Economist</div>
+                            <div class="persona-section">
+                                <h4>Quote</h4>
+                                <p class="persona-quote">"{tr_("persona_2_quote")}"</p>
                             </div>
-                            <p>{tr_("persona_2_summary")}</p>
+                            <div class="persona-section">
+                                <h4>Bio</h4>
+                                <ul class="persona-list persona-bio-list">
+                                    <li>Age: 42</li>
+                                    <li>Gender: Male</li>
+                                    <li>Job Title: {tr_("persona_2_role")}</li>
+                                    <li>Education: {tr_("persona_2_education")}</li>
+                                    <li>Location: {tr_("persona_2_location")}</li>
+                                    <li>Experience: {tr_("persona_2_experience")}</li>
+                                    <li>Current Project: {tr_("persona_2_summary")}</li>
+                                </ul>
+                            </div>
                             <div class="persona-section">
                                 <h4>{tr_("persona_2_goals_title")}</h4>
                                 <ul class="persona-list">
@@ -172,12 +180,12 @@ def get_page_html(form_data):
         </section>
 
         <section class="about-us-section">
-            <h2>{tr_("about_us_title")}</h2>
             <div class="about-content">
-                <div class="about-image-placeholder" aria-label="Image placeholder for about us">
-                    <div class="placeholder-art"></div>
+                <div class="about-image-wrapper" aria-label="Page author image">
+                    <img src="/images/PageAuthor.png" alt="Page Author" class="about-image">
                 </div>
                 <div class="about-us-copy">
+                    <h2>{tr_("about_us_title")}</h2>
                     <p>{tr_("about_us_p1")}</p>
                     <p>{tr_("about_us_p2")}</p>
                 </div>
