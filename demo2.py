@@ -30,3 +30,4 @@ socketserver.TCPServer.allow_reuse_address = True
 with socketserver.TCPServer(("", PORT), pyhtml.MyRequestHandler) as httpd:
     print(f"Serving on http://localhost:{PORT}")
     httpd.serve_forever()
+

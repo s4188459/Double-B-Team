@@ -1,176 +1,97 @@
 class FAQChatWidget:
     def __init__(self):
-        self.suggestions = [
-            "How do I compare two years?",
-            "What does the Top selector do?",
-            "How do I filter by country?",
-            "How do I change the year range?",
-        ]
-
         self.welcome_text = (
             "Ask a quick question about the data pages, filters, or charts. "
-            "Click a suggestion to ask it instantly."
+            "Open one of the fixed questions below for a quick answer."
         )
 
-        self.answer_pairs = [
+        self.faq_items = [
             {
-                "keys": ["data explorer", "explorer", "data page"],
+                "question": "How do I use a data page?",
                 "answer": (
                     "Use the Data menu to open a page, then choose filters and click Apply "
                     "to refresh the results."
                 ),
             },
             {
-                "keys": ["top 10", "top value", "top"],
+                "question": "What does the Top selector do?",
                 "answer": (
                     "The Top selector limits how many rows appear in the table. Select 10, "
                     "20, or more to adjust the list."
                 ),
             },
             {
-                "keys": ["missing countries", "not listed", "no countries"],
+                "question": "Why are some countries missing?",
                 "answer": (
                     "Only countries with valid data in both selected years are shown. Empty "
                     "or invalid values are excluded."
                 ),
             },
             {
-                "keys": ["language", "switch language"],
+                "question": "How do I switch language?",
                 "answer": (
                     "Use the language links at the top bar to switch interface text while "
                     "preserving your current page."
                 ),
             },
             {
-                "keys": ["year", "years", "start year", "end year"],
+                "question": "How do I compare or change years?",
                 "answer": (
                     "Choose your start and end year filters to compare data for two "
                     "different time points."
                 ),
             },
             {
-                "keys": ["help", "faq", "question"],
+                "question": "What questions can this FAQ answer?",
                 "answer": (
-                    "Ask about data filters, charts, or how to use the explorer. I can "
-                    "answer common site questions here."
+                    "This FAQ covers common site questions about data filters, charts, "
+                    "language switching, missing countries, and how to use the explorer."
                 ),
             },
         ]
 
-    def _build_suggestions_html(self):
-        button_html = []
-        for suggestion in self.suggestions:
-            button_html.append(
-                f'<button type="button" class="faq-suggestion">{suggestion}</button>'
-            )
-        return "".join(button_html)
+    def _html(self, value):
+        return (
+            str(value if value is not None else "")
+            .replace("&", "&amp;")
+            .replace('"', "&quot;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
 
-    def _build_answer_pairs_js(self):
-        lines = []
-        for pair in self.answer_pairs:
-            keys = ', '.join([f"'{key}'" for key in pair['keys']])
-            answer = pair['answer'].replace("'", "\\'")
-            lines.append(f"                {{keys: [{keys}], answer: '{answer}'}}")
-        return ",\n".join(lines)
+    def _build_faq_items_html(self):
+        item_html = []
+        for item in self.faq_items:
+            item_html.append(
+                '<details class="faq-item">'
+                f'<summary>{self._html(item["question"])}</summary>'
+                f'<p>{self._html(item["answer"])}</p>'
+                '</details>'
+            )
+        return "".join(item_html)
 
     def render(self):
         return (
             """
     <div class="faq-chat-widget" aria-live="polite">
-        <button type="button" class="faq-chat-bubble" aria-label="Open FAQ chat">?</button>
-        <div class="faq-chat-panel" aria-hidden="true">
+        <input type="checkbox" id="faq-chat-toggle" class="faq-chat-toggle">
+        <label for="faq-chat-toggle" class="faq-chat-bubble" aria-label="Open FAQ helper">?</label>
+        <div class="faq-chat-panel">
             <div class="faq-chat-header">
                 <span>FAQ Helper</span>
-                <button type="button" class="faq-chat-close" aria-label="Close chat">×</button>
+                <label for="faq-chat-toggle" class="faq-chat-close" aria-label="Close FAQ helper">&times;</label>
             </div>
             <div class="faq-chat-messages" id="faqChatMessages">
                 <div class="faq-chat-system">"""
-            + self.welcome_text +
-            """</div>
-            </div>
-            <div class="faq-chat-suggestion-label">Try one of these questions:</div>
-            <div class="faq-chat-suggestions" id="faqChatSuggestions">
+            + self.welcome_text
+            + """</div>
+                <div class="faq-list">
             """
-            + self._build_suggestions_html() +
-            """
+            + self._build_faq_items_html()
+            + """
+                </div>
             </div>
         </div>
     </div>
-
-    <script>
-        (function() {
-            var bubble = document.querySelector('.faq-chat-bubble');
-            var panel = document.querySelector('.faq-chat-panel');
-            var closeBtn = document.querySelector('.faq-chat-close');
-            var messages = document.querySelector('#faqChatMessages');
-            var suggestions = document.querySelectorAll('.faq-suggestion');
-
-            var answerPairs = [
-        """
-            + self._build_answer_pairs_js() +
-            """
-            ];
-
-            function safeText(text) {
-                return text.replace(/[<>]/g, '').trim();
-            }
-
-            function appendMessage(text, role) {
-                var message = document.createElement('div');
-                message.className = 'faq-chat-message ' + role;
-                message.textContent = text;
-                messages.appendChild(message);
-                messages.scrollTop = messages.scrollHeight;
-            }
-
-            function findAnswer(query) {
-                var normalized = query.toLowerCase();
-                for (var i = 0; i < answerPairs.length; i++) {
-                    var pair = answerPairs[i];
-                    for (var j = 0; j < pair.keys.length; j++) {
-                        if (normalized.indexOf(pair.keys[j]) !== -1) {
-                            return pair.answer;
-                        }
-                    }
-                }
-                return null;
-            }
-
-            function handleQuery(text) {
-                var clean = safeText(text);
-                if (!clean) return;
-                appendMessage(clean, 'user');
-                var answer = findAnswer(clean);
-                if (answer) {
-                    appendMessage(answer, 'bot');
-                } else {
-                    appendMessage('I am sorry, I do not know that specific answer. Try asking about filters, data pages, or charts.', 'bot');
-                }
-            }
-
-            function openPanel() {
-                panel.style.display = 'flex';
-                panel.setAttribute('aria-hidden', 'false');
-            }
-
-            function closePanel() {
-                panel.style.display = 'none';
-                panel.setAttribute('aria-hidden', 'true');
-            }
-
-            bubble.addEventListener('click', function() {
-                if (panel.style.display === 'flex') {
-                    closePanel();
-                } else {
-                    openPanel();
-                }
-            });
-            closeBtn.addEventListener('click', closePanel);
-            suggestions.forEach(function(button) {
-                button.addEventListener('click', function() {
-                    handleQuery(this.textContent);
-                });
-            });
-        })();
-    </script>
-    """)
+    """
+        )

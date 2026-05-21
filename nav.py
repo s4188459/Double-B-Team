@@ -15,7 +15,7 @@ _BREADCRUMBS = {
     "/binh_page_2": [("Home", "/"), ("Data", None), ("Vaccination Data Explorer", None)],
     "/binh_page_3": [("Home", "/"), ("Data", None), ("Vaccination Improvement Explorer", None)],
     "/bao_page_2":  [("Home", "/"), ("Data", None), ("Infection Data by Economic Status Explorer", None)],
-    "/bao_page_3":  [("Home", "/"), ("Data", None), ("Infection Improvement by Economic Status Explorer", None)],
+    "/bao_page_3":  [("Home", "/"), ("Data", None), ("Countries Above Global Infection Rate", None)],
 }
 
 # maps English breadcrumb labels to translation keys in translations.TRANSLATIONS
@@ -26,7 +26,7 @@ _BREADCRUMB_KEY = {
     "Vaccination Data Explorer":                           "page_vacc_explorer",
     "Vaccination Improvement Explorer":                    "page_vacc_improvement",
     "Infection Data by Economic Status Explorer":          "page_inf_explorer",
-    "Infection Improvement by Economic Status Explorer":   "page_inf_improvement",
+    "Countries Above Global Infection Rate":               "page_inf_improvement",
 }
 
 # renders the "Home > Data > Page Name" trail shown below the header

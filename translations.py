@@ -47,7 +47,7 @@ TRANSLATIONS = {
         "de": "Infektionsdaten nach Wirtschaftsstatus",
     },
     "page_inf_improvement":  {
-        "en": "Infection Improvement by Economic Status Explorer",
+        "en": "Countries Above Global Infection Rate",
         "vi": "Khám phá cải thiện nhiễm bệnh theo kinh tế",
         "it": "Esplora miglioramenti infezioni per economia",
         "fr": "Explorateur d'amélioration des infections",
@@ -77,7 +77,7 @@ TRANSLATIONS = {
         "de": "Infektionsraten und Fallzahlen nach Wirtschaftsstatus erkunden",
     },
     "page_inf_improvement_sub": {
-        "en": "Explore improvement in infection rates across countries for a selected economic status and time range",
+        "en": "Identify countries where reported infections per 100,000 people exceed the global rate for a selected year and infection type",
         "vi": "Khám phá cải thiện tỷ lệ nhiễm bệnh theo nhóm kinh tế và khoảng thời gian",
         "it": "Esplora il miglioramento dei tassi di infezione per status economico",
         "fr": "Explorez l'amélioration des taux d'infection par statut économique",
@@ -217,7 +217,7 @@ TRANSLATIONS = {
         "de": "Wähle Infektionstyp, Wirtschaftsstatus und Jahr, dann klicke Anwenden.",
     },
     "inactive_msg_inf3": {
-        "en": "Choose an infection type, economic status, and year range, then click Apply Filters to view this data.",
+        "en": "Choose an infection type and year, then click Apply Filters to view countries above the global infection rate.",
         "vi": "Chọn loại bệnh, tình trạng kinh tế và khoảng năm, rồi nhấn Áp dụng để xem dữ liệu.",
         "it": "Scegli un tipo di infezione, status economico e intervallo anni, poi clicca Applica filtri.",
         "fr": "Choisissez un type d'infection, statut économique et plage d'années, puis cliquez Appliquer.",
@@ -276,7 +276,7 @@ TRANSLATIONS = {
         "de": "Hinweis: Länderspezifische Infektionsraten werden als gemeldete Fälle geteilt durch die Bevölkerung mal 100.000 berechnet. Tabellen aktualisieren beim Klicken auf “Anwenden”.",
     },
     "info_note_inf3": {
-        "en": "Note: Improvement is calculated as start-year infection rate minus end-year infection rate per 100,000 people. Positive values mean reported infection rates decreased.",
+        "en": "Note: The global infection rate is calculated from total reported cases divided by total population, multiplied by 100,000. Countries shown below it exceed that global rate.",
         "vi": "Lưu ý: Cải thiện được tính bằng tỷ lệ nhiễm bệnh năm đầu trừ tỷ lệ năm cuối trên 100.000 người. Giá trị dương nghĩa là tỷ lệ nhiễm bệnh đã giảm.",
         "it": "Nota: Il miglioramento si calcola come tasso di infezione dell'anno iniziale meno tasso dell'anno finale per 100.000 persone. Valori positivi indicano una riduzione.",
         "fr": "Note : L'amélioration est calculée comme le taux d'infection de l'année de début moins celui de l'année de fin pour 100 000 personnes. Les valeurs positives indiquent une réduction.",
@@ -309,7 +309,7 @@ TRANSLATIONS = {
         "de": "Wähle Infektionstyp, Wirtschaftsstatus und Jahr. Verwende Tabelle oder Diagramm für Details oder visuelle Übersicht.",
     },
     "how_desc_inf3": {
-        "en": "Select an infection type, economic status, start year, and end year. Use Table or Chart to compare countries by infection-rate improvement.",
+        "en": "Select a year and infection type. The table shows the global infection rate first, then countries whose infection rate is higher than the global rate.",
         "vi": "Chọn loại bệnh, tình trạng kinh tế, năm bắt đầu và năm kết thúc. Dùng Bảng hoặc Biểu đồ để so sánh cải thiện tỷ lệ nhiễm bệnh.",
         "it": "Seleziona tipo di infezione, status economico, anno di inizio e fine. Usa Tabella o Grafico per confrontare il miglioramento del tasso.",
         "fr": "Sélectionnez type d'infection, statut économique, année de début et de fin. Utilisez Tableau ou Graphique pour comparer l'amélioration.",
