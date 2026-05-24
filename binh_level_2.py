@@ -111,7 +111,7 @@ def get_page_html(form_data):
     if delete_view_f.isdigit():
         _delete_saved_view(db, delete_view_f)
         saved_views = _load_saved_views(db)
-        saved_message = '<span class="saved-message">Deleted</span>'
+        saved_message = f'<span class="saved-message">{tr_("deleted_msg")}</span>'
 
     antigen_opts = pyhtml.get_results_from_query(db, "SELECT AntigenID, name FROM Antigen ORDER BY AntigenID")
     year_opts    = pyhtml.get_results_from_query(db, "SELECT DISTINCT year FROM Vaccination ORDER BY year DESC")
@@ -206,16 +206,16 @@ def get_page_html(form_data):
             country_display = str(_cr[0][0])
 
     def _t1_title_base():
-        return "Country Meets Herd Immunity"
+        return tr_("t1_title_vacc2")
 
     def _t2_title():
-        return "Region Summary"
+        return tr_("t2_title_vacc2")
 
     def t1_country_miss_msg():
         name = country_display or applied_country_f
         thr  = f"&ge;{applied_threshold}%" if applied_threshold is not None else ""
-        msg  = f"does not meet the {thr} minimum rate" if thr else "has no coverage data"
-        return f'<div class="chart-msg">{name} {msg} for {antigen_display} in {applied_year_f}</div>'
+        msg  = tr_("country_no_meet_rate").format(thr) if thr else tr_("country_no_vacc_data")
+        return f'<div class="chart-msg">{name} {msg} {tr_("country_miss_for_in").format(antigen_display, applied_year_f)}</div>'
 
     def inactive_msg():
         missing = []
@@ -297,9 +297,9 @@ def get_page_html(form_data):
                 f'<body><table><tr>{ths}</tr>{trs}</table></body></html>')
         return "data:application/vnd.ms-excel;charset=utf-8," + urllib.parse.quote(html)
 
-    export1_href = _xls_export(["Antigen", "Year", "Country", "Region", "% of Target"], _exp1)
+    export1_href = _xls_export([tr_("th_antigen"), tr_("th_year"), tr_("th_country"), tr_("th_region"), tr_("th_pct_target")], _exp1)
     thr_hdr = f">={applied_threshold}%" if applied_threshold is not None else "All"
-    export2_href = _xls_export(["Antigen", "Year", "Region", f"Countries Met {thr_hdr}"], _exp2)
+    export2_href = _xls_export([tr_("th_antigen"), tr_("th_year"), tr_("th_region"), f"{tr_('th_countries_met')} {thr_hdr}"], _exp2)
 
     # chart data only makes sense when both antigen and year are applied
     if tables_active:
@@ -341,6 +341,7 @@ def get_page_html(form_data):
         if sort2_f and sort2_f != "countries_desc": p["sort2"] = sort2_f
         if t1_view_f == "chart": p["t1_view"] = t1_view_f
         if t2_view_f == "chart": p["t2_view"] = t2_view_f
+        if lang != "en":          p["lang"]           = lang
         p["page1"] = "1"
         p["page2"] = "1"
         qs = "&".join(f"{k}={v}" for k, v in p.items() if v)
@@ -444,7 +445,7 @@ def get_page_html(form_data):
     if applied_threshold is not None and tables_active:
         filter_tags += f'<span class="filter-tag">&ge;{applied_threshold}%</span> '
     if not filter_tags:
-        filter_tags = '<span class="filter-all-label">All data</span> '
+        filter_tags = f'<span class="filter-all-label">{tr_("all_data")}</span> '
 
     def sel_antigen():
         label = next((name for aid, name in antigen_opts if aid == antigen_f), antigen_f) if antigen_f else tr_("select_antigen")
@@ -489,9 +490,9 @@ def get_page_html(form_data):
                 f'</div>')
 
     def sel_country():
-        label = next((cn for cid, cn in country_opts if cid == country_f), "All Countries")
-        # "All Countries" clears the country but keeps the region so the list doesn't reset
-        opts = f'<a href="{cascade_url(region=region_f)}" class="{"selected" if not country_f else ""}">All Countries</a>'
+        label = next((cn for cid, cn in country_opts if cid == country_f), tr_("all_countries"))
+        # clears the country but keeps the region so the list doesn't reset
+        opts = f'<a href="{cascade_url(region=region_f)}" class="{"selected" if not country_f else ""}">{tr_("all_countries")}</a>'
         for cid, cn in country_opts:
             sc = "selected" if cid == country_f else ""
             opts += f'<a href="{cascade_url(country=cid)}" class="{sc}">{cn}</a>'
@@ -530,7 +531,7 @@ def get_page_html(form_data):
 
     def rows1_html():
         if not rows1:
-            return '<tr><td colspan="5" class="no-data">No countries found for the selected filters</td></tr>'
+            return f'<tr><td colspan="5" class="no-data">{tr_("no_data")}</td></tr>'
         out = ""
         for aid, yr, cname, rname, pct in rows1:
             badge = f'<span class="cov-badge {_cov_class(pct)}">{pct}%</span>' if pct else "—"
@@ -539,7 +540,7 @@ def get_page_html(form_data):
 
     def rows2_html():
         if not rows2:
-            return '<tr><td colspan="4" class="no-data">No region data for the selected filters</td></tr>'
+            return f'<tr><td colspan="4" class="no-data">{tr_("no_region_data")}</td></tr>'
         out = ""
         for aid, yr, rname, cnt in rows2:
             out += f"<tr><td>{aid}</td><td>{yr}</td><td><strong>{cnt}</strong></td><td>{rname}</td></tr>"
@@ -608,7 +609,7 @@ def get_page_html(form_data):
         if applied_country_f and cnt1 == 0:
             return title + t1_country_miss_msg()
         if len(chart1_rows) < 2:
-            return title + '<div class="chart-msg">Not enough data — need at least 2 countries to display a chart</div>'
+            return title + f'<div class="chart-msg">{tr_("not_enough_chart_n_countries")}</div>'
         max_val = max((pct or 0) for _, _, _, _, pct in chart1_rows) or 1
         out = ""
         for i, (_, _, cname, _, pct) in enumerate(chart1_rows):
@@ -631,7 +632,7 @@ def get_page_html(form_data):
         if not tables_active:
             return title + inactive_msg()
         if len(chart2_rows) < 2:
-            return title + '<div class="chart-msg">Not enough data — need at least 2 regions to display a chart</div>'
+            return title + f'<div class="chart-msg">{tr_("not_enough_chart_n_regions")}</div>'
         max_val = max(cnt for _, cnt in chart2_rows) or 1
         MAX_H   = 180
         cols = labels = ""
@@ -667,11 +668,11 @@ def get_page_html(form_data):
             <div class="table-wrapper">
                 <table class="data-table">
                     <thead><tr>
-                        {th1("Antigen",      "antigen_asc",  "antigen_desc")}
-                        {th1("Year",         "year_asc",     "year_desc")}
-                        {th1("Country",      "country_asc",  "country_desc")}
-                        {th1("Region",       "region_asc",   "region_desc")}
-                        {th1("% of Target",  "coverage_asc", "coverage_desc")}
+                        {th1(tr_("th_antigen"),      "antigen_asc",  "antigen_desc")}
+                        {th1(tr_("th_year"),         "year_asc",     "year_desc")}
+                        {th1(tr_("th_country"),      "country_asc",  "country_desc")}
+                        {th1(tr_("th_region"),       "region_asc",   "region_desc")}
+                        {th1(tr_("th_pct_target"),   "coverage_asc", "coverage_desc")}
                     </tr></thead>
                     <tbody>{rows1_html()}</tbody>
                 </table>
@@ -687,10 +688,10 @@ def get_page_html(form_data):
             <div class="table-wrapper">
                 <table class="data-table">
                     <thead><tr>
-                        {th2("Antigen",            "antigen2_asc",  "antigen2_desc")}
-                        {th2("Year",               "year2_asc",     "year2_desc")}
-                        {th2(f"Countries met {f'≥{applied_threshold}%' if applied_threshold is not None else '(all)'}", "countries_asc", "countries_desc")}
-                        {th2("Region",             "region2_asc",   "region2_desc")}
+                        {th2(tr_("th_antigen"),            "antigen2_asc",  "antigen2_desc")}
+                        {th2(tr_("th_year"),               "year2_asc",     "year2_desc")}
+                        {th2(f"{tr_('th_countries_met')} {f'≥{applied_threshold}%' if applied_threshold is not None else '(all)'}", "countries_asc", "countries_desc")}
+                        {th2(tr_("th_region"),             "region2_asc",   "region2_desc")}
                     </tr></thead>
                     <tbody>{rows2_html()}</tbody>
                 </table>
@@ -737,7 +738,7 @@ def get_page_html(form_data):
         <div class="filter-group"><label>{tr_("filter_country")}</label>{sel_country()}</div>
         <div class="filter-group"><label>{tr_("filter_antigen")}</label>{sel_antigen()}</div>
         <div class="filter-group"><label>{tr_("filter_year")}</label>{sel_year()}</div>
-        <div class="filter-group"><label>Min. Rate (%)</label>{sel_threshold()}</div>
+        <div class="filter-group"><label>{tr_("filter_min_rate")}</label>{sel_threshold()}</div>
         <div class="filter-group"><label>{tr_("filter_sort")}</label>{sel_sort()}</div>
 
         <!-- Apply Filters: applies region/country to tables; hidden fields preserve current params -->
@@ -773,7 +774,7 @@ def get_page_html(form_data):
     <img src="/images/showing_result%20icon.png" class="results-icon" alt="">
     <span class="results-label">{tr_("showing_result")}</span>
     {filter_tags}
-    <span class="ready-badge">Ready</span>
+    <span class="ready-badge">{tr_("ready_badge")}</span>
     <span class="results-count">{n_ctr} {tr_("countries_found")}</span>
     <span class="results-sep">|</span>
     <span class="results-note">{tr_("last_updated")} {db_min_year}&#8211;{db_max_year}</span>

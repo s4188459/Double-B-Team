@@ -135,11 +135,11 @@ def get_page_html(form_data):
                         <img src="/images/iconinfo.png" alt="info" class="btn-icon">
                     </label>
                     <div class="methodology-popup">
-                        <p><strong>Data Source:</strong> Metrics are aggregated from the WHO Global Immunization Data (2000&ndash;2024).</p>
-                        <p><strong>Countries Monitored:</strong> Includes nations and territories categorized into 7 global regions, tracked between 2000 and 2024.</p>
-                        <p><strong>Average Coverage:</strong> Calculated as the simple average coverage rate across all tracked antigens globally.</p>
-                        <p><strong>&ge;90% Coverage Target:</strong> Represents the number of nations that successfully achieved at least 90% coverage across all assessed antigens specifically in the year 2024.</p>
-                        <p><strong>Total Doses:</strong> The cumulative total of vaccine doses administered and recorded for the monitored antigens over the 25-year period.</p>
+                        <p>{tr_("method_data_source")}</p>
+                        <p>{tr_("method_countries")}</p>
+                        <p>{tr_("method_avg_coverage")}</p>
+                        <p>{tr_("method_90_target")}</p>
+                        <p>{tr_("method_total_doses")}</p>
                     </div>
                 </div>
             </div>

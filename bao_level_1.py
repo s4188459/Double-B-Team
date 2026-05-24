@@ -102,7 +102,8 @@ def _render_persona_list(items, extra_class=""):
     return f'<ul class="{class_name}">{item_html}</ul>'
 
 
-def _render_personas(personas):
+def _render_personas(personas, lang="en"):
+    t = lambda k: tr.get_translation(k, lang)
     radio_html = ""
     tab_html = ""
     panel_html = ""
@@ -116,13 +117,13 @@ def _render_personas(personas):
         )
 
         bio_items = [
-            f'Age: {persona["age"]}',
-            f'Gender: {persona["gender"]}',
-            f'Job Title: {persona["job_title"]}',
-            f'Education: {persona["education"]}',
-            f'Location: {persona["location"]}',
-            f'Experience: {persona["experience"]}',
-            f'Current Project: {persona["current_project"]}',
+            f'{t("persona_bio_age")}: {persona["age"]}',
+            f'{t("persona_bio_gender")}: {persona["gender"]}',
+            f'{t("persona_bio_job")}: {persona["job_title"]}',
+            f'{t("persona_bio_edu")}: {persona["education"]}',
+            f'{t("persona_bio_loc")}: {persona["location"]}',
+            f'{t("persona_bio_exp")}: {persona["experience"]}',
+            f'{t("persona_bio_project")}: {persona["current_project"]}',
         ]
 
         panel_html += f"""
@@ -133,7 +134,7 @@ def _render_personas(personas):
                         </div>
                         <div class="persona-details">
                             <div class="persona-header">
-                                <h3>Persona: {_html(persona['display_name'])}</h3>
+                                <h3>{t("persona_prefix")}: {_html(persona['display_name'])}</h3>
                                 <div class="persona-tooltip">
                                     <span class="persona-tooltip-icon">!</span>
                                     <div class="persona-tooltip-text">{_html(persona['tooltip'])}</div>
@@ -141,26 +142,26 @@ def _render_personas(personas):
                             </div>
                             <div class="persona-subtitle">{_html(persona['subtitle'])}</div>
                             <div class="persona-section">
-                                <h4>Quote</h4>
+                                <h4>{t("persona_section_quote")}</h4>
                                 <p class="persona-quote">"{_html(persona['quote'])}"</p>
                             </div>
                             <div class="persona-section">
-                                <h4>Bio</h4>
+                                <h4>{t("persona_section_bio")}</h4>
                                 {_render_persona_list(bio_items, "persona-bio-list")}
                             </div>
                             <div class="persona-section">
-                                <h4>Goals</h4>
+                                <h4>{t("persona_section_goals")}</h4>
                                 {_render_persona_list(_persona_items(persona, "goal"))}
                             </div>
                             <div class="persona-section">
-                                <h4>Pain Points</h4>
+                                <h4>{t("persona_section_pain")}</h4>
                                 {_render_persona_list(_persona_items(persona, "pain"))}
                             </div>
                             <div class="persona-section">
-                                <h4>Needs</h4>
+                                <h4>{t("persona_section_needs")}</h4>
                                 {_render_persona_list(_persona_items(persona, "need"))}
                             </div>
-                            <p class="persona-motivation"><strong>Motivation:</strong> {_html(persona['motivation'])}</p>
+                            <p class="persona-motivation"><strong>{t("persona_motivation_label")}</strong> {_html(persona['motivation'])}</p>
                         </div>
                     </div>
                 </div>"""
@@ -177,16 +178,17 @@ def _render_personas(personas):
             </div>"""
 
 
-def _render_team_members(members):
+def _render_team_members(members, lang="en"):
     if not members:
         return ""
 
+    t = lambda k: tr.get_translation(k, lang)
     member_html = ""
     for member in members:
         member_html += (
             '<div class="about-team-member">'
             f'<span class="about-team-name">{_html(member["full_name"])}</span>'
-            f'<span class="about-team-id">Student ID: {_html(member["student_id"])}</span>'
+            f'<span class="about-team-id">{t("student_id_label")}: {_html(member["student_id"])}</span>'
             '</div>'
         )
 
@@ -207,8 +209,8 @@ def get_page_html(form_data):
     nav_html    = nav.get_nav_html("/bao_page_1", lang=lang, form_data=form_data)
     footer_html = nav.get_footer_html(lang)
     db = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database', 'immunisation.db')
-    personas_html = _render_personas(_load_personas(db))
-    team_members_html = _render_team_members(_load_team_members(db))
+    personas_html = _render_personas(_load_personas(db), lang)
+    team_members_html = _render_team_members(_load_team_members(db), lang)
 
     return f"""<!DOCTYPE html>
 <html lang="{lang}">

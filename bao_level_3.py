@@ -153,7 +153,7 @@ def get_page_html(form_data):
     if delete_view_f.isdigit():
         _delete_saved_view(db, delete_view_f)
         saved_views = _load_saved_views(db)
-        saved_message = '<span class="saved-message">Deleted</span>'
+        saved_message = f'<span class="saved-message">{tr_("deleted_msg")}</span>'
 
     global_rate = None
     global_cases = None
@@ -263,11 +263,11 @@ def get_page_html(form_data):
     filter_tags = (
         f'<span class="filter-tag">{_html(disease_display)}</span> '
         f'<span class="filter-tag">{applied_year_i}</span> '
-        f'<span class="filter-tag">Above global average</span> '
+        f'<span class="filter-tag">{tr_("filter_above_global")}</span> '
     )
 
     def inactive_msg():
-        return '<div class="chart-msg">Choose an infection type and year, then click Apply Filters to view countries above the global infection rate.</div>'
+        return f'<div class="chart-msg">{tr_("inactive_msg_inf3")}</div>'
 
     def global_rate_cell():
         if global_rate is None:
@@ -276,16 +276,16 @@ def get_page_html(form_data):
 
     def rows_html():
         if global_rate is None:
-            return '<tr><td colspan="5" class="no-data">No global infection data found for the selected filters</td></tr>'
+            return f'<tr><td colspan="5" class="no-data">{tr_("no_global_data_inf3")}</td></tr>'
         out = (
-            f'<tr class="global-row"><td><strong>Global</strong></td>'
+            f'<tr class="global-row"><td><strong>{tr_("label_global")}</strong></td>'
             f'<td>{_html(disease_display)}</td>'
             f'<td>{global_rate_cell()}</td>'
             f'<td>{applied_year_i}</td>'
             f'<td>{int(global_cases or 0)}</td></tr>'
         )
         if not rows:
-            return out + '<tr><td colspan="5" class="no-data">No countries exceeded the global infection rate for the selected filters</td></tr>'
+            return out + f'<tr><td colspan="5" class="no-data">{tr_("no_countries_above_rate")}</td></tr>'
         for country, rate, cases in rows:
             out += (
                 f'<tr><td>{_html(country)}</td>'
@@ -334,12 +334,12 @@ def get_page_html(form_data):
         return f'<th class="sortable{cls}"><a href="{url(sort=next_key, page="1")}" class="sort-link">{_html(label)} {_SIMG}</a></th>'
 
     def _xls_export():
-        headers = ["Country", "Infection Type", "Infection per 100,000 people", "Year", "Reported cases"]
+        headers = [tr_("th_country"), tr_("filter_infection_type"), tr_("th_inf_per_100k"), tr_("th_year"), tr_("th_reported_cases")]
         ths = "".join(f"<th>{_html(header)}</th>" for header in headers)
         trs = ""
         if global_rate is not None:
             trs += (
-                f"<tr><td>Global</td><td>{_html(disease_display)}</td>"
+                f"<tr><td>{tr_('label_global')}</td><td>{_html(disease_display)}</td>"
                 f"<td>{global_rate}</td><td>{applied_year_i}</td><td>{int(global_cases or 0)}</td></tr>"
             )
         for country, rate, cases in country_rows_all:
@@ -351,18 +351,18 @@ def get_page_html(form_data):
         return "data:application/vnd.ms-excel;charset=utf-8," + urllib.parse.quote(html)
 
     def chart3_html():
-        title = f'<div class="table-header-row"><span class="table-title">Countries above the global {_html(disease_display)} infection rate in {applied_year_i}</span></div>'
+        title = f'<div class="table-header-row"><span class="table-title">{tr_("inf3_chart_title").format(_html(disease_display), applied_year_i)}</span></div>'
         if not table_active:
             return title + inactive_msg()
         if global_rate is None:
-            return title + '<div class="chart-msg">No global data available for the selected filters.</div>'
+            return title + f'<div class="chart-msg">{tr_("no_global_data_inf3")}</div>'
         if len(country_rows_all) < 1:
-            return title + '<div class="chart-msg">No countries exceeded the global infection rate for the selected filters.</div>'
+            return title + f'<div class="chart-msg">{tr_("no_countries_above_rate")}</div>'
         chart_rows = country_rows_all[:20]
         max_val = max([global_rate] + [row[1] or 0 for row in chart_rows]) or 1
         out = (
             f'<div class="bar-row"><span class="bar-rank">G</span>'
-            f'<span class="bar-label" title="Global">Global</span>'
+            f'<span class="bar-label" title="{tr_("label_global")}">{tr_("label_global")}</span>'
             f'<div class="bar-track"><div class="bar-fill-gray" style="width:{round(global_rate / max_val * 100, 1)}%"></div></div>'
             f'<span class="bar-val">{global_rate}</span></div>'
         )
@@ -380,17 +380,17 @@ def get_page_html(form_data):
     if table_active:
         t3_panel_content = f"""
             <div class="table-header-row">
-                <span class="table-title">Countries Above Global Infection Rate</span>
-                <a href="{export_href}" download="countries_above_global_infection_rate.xls" class="export-btn"><img src="/images/export%20icon.png" alt=""> Export Data</a>
+                <span class="table-title">{tr_("inf3_table_title")}</span>
+                <a href="{export_href}" download="countries_above_global_infection_rate.xls" class="export-btn"><img src="/images/export%20icon.png" alt=""> {tr_("btn_export_data")}</a>
             </div>
             <div class="table-wrapper">
                 <table class="data-table">
                     <thead><tr>
-                        {th("Country", "country_asc", "country_desc")}
-                        <th>Infection Type</th>
-                        {th("Infection per 100,000 people", "rate_asc", "rate_desc")}
-                        <th>Year</th>
-                        <th>Reported cases</th>
+                        {th(tr_("th_country"), "country_asc", "country_desc")}
+                        <th>{tr_("filter_infection_type")}</th>
+                        {th(tr_("th_inf_per_100k"), "rate_asc", "rate_desc")}
+                        <th>{tr_("th_year")}</th>
+                        <th>{tr_("th_reported_cases")}</th>
                     </tr></thead>
                     <tbody>{rows_html()}</tbody>
                 </table>
@@ -441,7 +441,7 @@ def get_page_html(form_data):
     return f"""<!DOCTYPE html>
 <html lang="{lang}">
 <head>
-    <title>ImmuniData - Countries Above Global Infection Rate</title>
+    <title>ImmuniData - {tr_("page_inf_improvement")}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>{css}</style>
@@ -451,8 +451,8 @@ def get_page_html(form_data):
 {nav_html}
 
 <div class="page-header">
-    <h1>Countries Above Global Infection Rate</h1>
-    <p>Identify countries where reported infections per 100,000 people exceed the global rate for a selected year and infection type.</p>
+    <h1>{tr_("page_inf_improvement")}</h1>
+    <p>{tr_("page_inf_improvement_sub")}</p>
 </div>
 
 <div class="filter-card">
@@ -481,10 +481,10 @@ def get_page_html(form_data):
     <img src="/images/showing_result%20icon.png" class="results-icon" alt="">
     <span class="results-label">{tr_("showing_result")}</span>
     {filter_tags}
-    <span class="ready-badge">Ready</span>
-    <span class="results-count">{cnt} countries above global rate</span>
+    <span class="ready-badge">{tr_("ready_badge")}</span>
+    <span class="results-count">{tr_("countries_above_rate_count").format(cnt)}</span>
     <span class="results-sep">|</span>
-    <span class="results-note">Global rate: {_html(global_rate if global_rate is not None else "N/A")} per 100,000</span>
+    <span class="results-note">{tr_("global_rate_label").format(_html(global_rate if global_rate is not None else "N/A"))}</span>
     <span class="results-sep">|</span>
     <span class="results-note">{tr_("last_updated")} {db_min_year}&#8211;{db_max_year}</span>
 </div>
@@ -524,7 +524,7 @@ def get_page_html(form_data):
 
 <div class="info-note">
     <img src="/images/iconinfo.png" class="info-icon-img" alt="">
-    <span>Country infection rates are calculated as reported cases divided by population, multiplied by 100,000. The global row is shown first, followed by countries above that global rate.</span>
+    <span>{tr_("info_note_inf3")}</span>
 </div>
 
 <div class="how-card">
@@ -532,7 +532,7 @@ def get_page_html(form_data):
         <img src="/images/iconinfo.png" class="info-icon-img" alt="">
         <div class="how-text">
             <span class="how-title">{tr_("how_works_title")}</span>
-            <p>Select a year and infection type. The table calculates the global infection rate, places it at the top, then lists countries whose infection rate is higher than the global rate.</p>
+            <p>{tr_("how_desc_inf3")}</p>
         </div>
     </div>
 </div>
