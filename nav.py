@@ -134,7 +134,7 @@ def get_nav_html(active_page="/", lang="en", form_data=None):
     </header>
     {_build_breadcrumb(active_page, lang, lang_suffix)}
 
-    {FAQChatWidget().render()}
+    {FAQChatWidget().render(lang=lang)}
     """
 
 # static footer with brand info, quick links, and legal text
@@ -158,10 +158,10 @@ def get_footer_html(lang="en"):
                     <a href="tel:+84967502748" class="footer-contact-icon" title="Phone">
                         <img src="/images/phone icon.png" alt="Phone">
                     </a>
-                    <a href="https://www.google.com/maps/search/174+Truong+Sa+Quan+1+TP.HCM" target="_blank" class="footer-contact-icon" title="Location">
+                    <a href="https://www.google.com/maps/search/RMIT+University+Vietnam+702+Nguyen+Van+Linh+Ho+Chi+Minh" target="_blank" class="footer-contact-icon" title="Location">
                         <img src="/images/location icon.png" alt="Location">
                     </a>
-                    <a href="#" class="footer-contact-icon" title="LinkedIn">
+                    <a href="https://www.linkedin.com/in/ngo-dinn-binh-9469243b3/" target="_blank" class="footer-contact-icon" title="LinkedIn">
                         <img src="/images/LinkedIn icon.png" alt="LinkedIn">
                     </a>
                 </div>

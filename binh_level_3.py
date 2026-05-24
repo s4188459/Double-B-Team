@@ -94,7 +94,7 @@ def get_page_html(form_data):
     if delete_view_f.isdigit():
         _delete_saved_view(db, delete_view_f)
         saved_views = _load_saved_views(db)
-        saved_message = '<span class="saved-message">Deleted</span>'
+        saved_message = f'<span class="saved-message">{tr_("deleted_msg")}</span>'
 
     antigen_opts = pyhtml.get_results_from_query(db,
         "SELECT AntigenID, name FROM Antigen ORDER BY AntigenID")
@@ -354,7 +354,7 @@ def get_page_html(form_data):
 
     def rows_html():
         if not rows:
-            return '<tr><td colspan="6" class="no-data">No countries found — check that both years have population and vaccination data.</td></tr>'
+            return f'<tr><td colspan="6" class="no-data">{tr_("no_vacc_countries_found")}</td></tr>'
         out = ""
         for i, (cname, rname, start_r, end_r, delta) in enumerate(rows):
             rank   = (page - 1) * ROWS_PER_PAGE + i + 1
@@ -425,8 +425,8 @@ def get_page_html(form_data):
         def esc(v):
             s = str(v if v is not None else "")
             return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        headers = ["Rank", "Country", "Region",
-                   f"Coverage {applied_start_y} (%)", f"Coverage {applied_end_y} (%)", "Increase (%)"]
+        headers = [tr_("th_rank"), tr_("th_country"), tr_("th_region"),
+                   tr_("th_coverage_year").format(applied_start_y), tr_("th_coverage_year").format(applied_end_y), tr_("th_increase")]
         ths = "".join(f"<th>{esc(h)}</th>" for h in headers)
         trs = ""
         for i, (cn, rn, sc, ec, d) in enumerate(top_rows):
@@ -443,13 +443,13 @@ def get_page_html(form_data):
 
     # horizontal bar chart — green for improvement, red for decline, scrollable when Top ≥ 20
     def chart3_html():
-        title_text = (f"TOP {applied_top_n} COUNTRIES BY VACCINATION RATE INCREASE of {antigen_display} FROM {applied_start_y} TO {applied_end_y}"
-                      if table_active else "TOP COUNTRIES BY VACCINATION RATE INCREASE")
+        title_text = (tr_("vacc3_table_title").format(applied_top_n, antigen_display, applied_start_y, applied_end_y)
+                      if table_active else tr_("vacc3_table_title_inactive"))
         title = f'<div class="table-header-row"><span class="table-title">{title_text}</span></div>'
         if not table_active:
             return title + inactive_msg()
         if len(chart_rows) < 2:
-            return title + '<div class="chart-msg">Not enough data — need at least 2 countries to display a chart</div>'
+            return title + f'<div class="chart-msg">{tr_("not_enough_chart_n_countries")}</div>'
         max_abs = max(abs(r[4] or 0) for r in chart_rows) or 1
         out = ""
         for i, (cname, _, _, _, delta) in enumerate(chart_rows):
@@ -475,7 +475,7 @@ def get_page_html(form_data):
     if table_active:
         t3_panel_content = f"""
             <div class="table-header-row">
-                <span class="table-title">TOP {applied_top_n} COUNTRIES BY VACCINATION RATE INCREASE of {antigen_display} FROM {applied_start_y} TO {applied_end_y}</span>
+                <span class="table-title">{tr_("vacc3_table_title").format(applied_top_n, antigen_display, applied_start_y, applied_end_y)}</span>
                 <a href="{export_href}" download="vaccination_improvement.xls" class="export-btn">
                     <img src="/images/export%20icon.png" alt=""> Export Data
                 </a>
@@ -483,12 +483,12 @@ def get_page_html(form_data):
             <div class="table-wrapper">
                 <table class="data-table">
                     <thead><tr>
-                        <th>Rank</th>
-                        {th("Country",                                  "country_asc",  "country_desc")}
-                        {th("Region",                                   "region_asc",   "region_desc")}
-                        {th(f"Vaccination Rate In {applied_start_y}",   "start_asc",    "start_desc")}
-                        {th(f"Vaccination Rate In {applied_end_y}",     "end_asc",      "end_desc")}
-                        {th("Vaccination Rate Increase",                "increase_asc", "increase_desc")}
+                        <th>{tr_("th_rank")}</th>
+                        {th(tr_("th_country"),                                   "country_asc",  "country_desc")}
+                        {th(tr_("th_region"),                                    "region_asc",   "region_desc")}
+                        {th(tr_("th_vacc_rate_in").format(applied_start_y),      "start_asc",    "start_desc")}
+                        {th(tr_("th_vacc_rate_in").format(applied_end_y),        "end_asc",      "end_desc")}
+                        {th(tr_("th_vacc_rate_increase"),                        "increase_asc", "increase_desc")}
                     </tr></thead>
                     <tbody>{rows_html()}</tbody>
                 </table>
@@ -496,7 +496,7 @@ def get_page_html(form_data):
             {paginate()}"""
     else:
         t3_panel_content = (
-            f'<div class="table-header-row"><span class="table-title">Top Countries by Vaccination Rate Increase</span></div>'
+            f'<div class="table-header-row"><span class="table-title">{tr_("vacc3_table_title_inactive")}</span></div>'
             + inactive_msg()
         )
 
@@ -563,7 +563,7 @@ def get_page_html(form_data):
     <img src="/images/showing_result%20icon.png" class="results-icon" alt="">
     <span class="results-label">{tr_("showing_result")}</span>
     {filter_tags}
-    <span class="ready-badge">Ready</span>
+    <span class="ready-badge">{tr_("ready_badge")}</span>
     <span class="results-count">{n_total} {tr_("countries_both_years")}</span>
     <span class="results-sep">|</span>
     <span class="results-note">{tr_("last_updated")} {db_min_year}&#8211;{db_max_year}</span>

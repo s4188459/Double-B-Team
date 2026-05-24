@@ -110,7 +110,7 @@ def get_page_html(form_data):
     if delete_view_f.isdigit():
         _delete_saved_view(db, delete_view_f)
         saved_views = _load_saved_views(db)
-        saved_message = '<span class="saved-message">Deleted</span>'
+        saved_message = f'<span class="saved-message">{tr_("deleted_msg")}</span>'
 
     try:
         page1 = max(1, int(_get("page1", "1")))
@@ -142,12 +142,12 @@ def get_page_html(form_data):
         "economy_desc": "e.phase DESC",
     }
     SORT2_LABELS = {
-        "cases_desc": "Total Cases (High to Low)",
-        "cases_asc": "Total Cases (Low to High)",
-        "avg_desc": "Average Rate (High to Low)",
-        "avg_asc": "Average Rate (Low to High)",
-        "economy_asc": "Economic Status (A to Z)",
-        "economy_desc": "Economic Status (Z to A)",
+        "cases_desc":  tr_("sort_cases_hl"),
+        "cases_asc":   tr_("sort_cases_lh"),
+        "avg_desc":    tr_("sort_rate_hl"),
+        "avg_asc":     tr_("sort_rate_lh"),
+        "economy_asc": tr_("sort_economy_az"),
+        "economy_desc":tr_("sort_economy_za"),
     }
     SORT2_MAP = {
         "cases_desc": "total_cases DESC",
@@ -247,8 +247,8 @@ def get_page_html(form_data):
         html = f'<html><head><meta charset="UTF-8"></head><body><table><tr>{ths}</tr>{trs}</table></body></html>'
         return "data:application/vnd.ms-excel;charset=utf-8," + urllib.parse.quote(html)
 
-    export1_href = _xls_export(["Preventable disease", "Country", "Economic phase", "Year", "Cases", "Cases per 100,000 people"], rows1)
-    export2_href = _xls_export(["Preventable disease", "Economic phase", "Year", "Cases", "Countries reporting", "Average cases per 100,000"], rows2)
+    export1_href = _xls_export([tr_("th_preventable_disease"), tr_("th_country"), tr_("th_economic_phase"), tr_("th_year"), tr_("th_cases"), tr_("th_cases_per_100k_full")], rows1)
+    export2_href = _xls_export([tr_("th_preventable_disease"), tr_("th_economic_phase"), tr_("th_year"), tr_("th_cases"), tr_("th_countries_reporting"), tr_("th_avg_per_100k_full")], rows2)
 
     def url(**kw):
         p = {}
@@ -336,7 +336,7 @@ def get_page_html(form_data):
                 f'<div class="custom-select-options">{opts}</div></div>')
 
     def sel_sort():
-        label = SORT_LABELS.get(sort_f, "Cases per 100k (High to Low)")
+        label = SORT_LABELS.get(sort_f, tr_("sort_rate_hl"))
         opts = ""
         for val, lbl in SORT_LABELS.items():
             sc = "selected" if val == sort_f else ""
@@ -353,7 +353,7 @@ def get_page_html(form_data):
 
     def rows1_html():
         if not rows1:
-            return '<tr><td colspan="6" class="no-data">No infection records found for the selected filters</td></tr>'
+            return f'<tr><td colspan="6" class="no-data">{tr_("no_inf_records")}</td></tr>'
         out = ""
         for disease, country, phase, yr, cases, rate in rows1:
             badge = f'<span class="cov-badge {_rate_class(rate)}">{rate}</span>'
@@ -362,7 +362,7 @@ def get_page_html(form_data):
 
     def rows2_html():
         if not rows2:
-            return '<tr><td colspan="6" class="no-data">No economic-status summary found for the selected filters</td></tr>'
+            return f'<tr><td colspan="6" class="no-data">{tr_("no_economy_summary")}</td></tr>'
         out = ""
         for disease, phase, yr, cases, countries, avg_rate in rows2:
             badge = f'<span class="cov-badge {_rate_class(avg_rate)}">{avg_rate}</span>'
@@ -410,11 +410,11 @@ def get_page_html(form_data):
         return f'<div class="chart-msg">{tr_("inactive_msg_inf2")}</div>'
 
     def chart1_html():
-        title = f'<div class="table-header-row"><span class="table-title">Top infection rates for {_html(economy_display)} in {_html(applied_year_f)}</span></div>'
+        title = f'<div class="table-header-row"><span class="table-title">{tr_("chart1_title_inf2").format(_html(economy_display), _html(applied_year_f))}</span></div>'
         if not tables_active:
             return title + inactive_msg()
         if len(chart1_rows) < 2:
-            return title + '<div class="chart-msg">Not enough country data to display a chart.</div>'
+            return title + f'<div class="chart-msg">{tr_("not_enough_chart")}</div>'
         max_val = max((r[5] or 0) for r in chart1_rows) or 1
         out = ""
         for i, (_, country, _, _, _, rate) in enumerate(chart1_rows):
@@ -423,11 +423,11 @@ def get_page_html(form_data):
         return title + f'<div class="bar-chart-scroll"><div class="bar-chart-h">{out}</div></div>'
 
     def chart2_html():
-        title = f'<div class="table-header-row"><span class="table-title">Total cases by economic status in {_html(applied_year_f)}</span></div>'
+        title = f'<div class="table-header-row"><span class="table-title">{tr_("chart2_title_inf2").format(_html(applied_year_f))}</span></div>'
         if not summary_active:
             return title + inactive_msg()
         if len(chart2_rows) < 2:
-            return title + '<div class="chart-msg">Not enough economic-status data to display a chart.</div>'
+            return title + f'<div class="chart-msg">{tr_("not_enough_chart_economy")}</div>'
         max_val = max((r[3] or 0) for r in chart2_rows) or 1
         colors = ["#2980b9", "#27ae60", "#e67e22", "#9b59b6", "#e74c3c"]
         cols = labels = ""
@@ -440,18 +440,18 @@ def get_page_html(form_data):
 
     t1_panel_content = inactive_msg() if not tables_active else f"""
         <div class="table-header-row">
-            <span class="table-title">Table 1: Infection Rate by Country</span>
-            <a href="{export1_href}" download="infection_by_country.xls" class="export-btn"><img src="/images/export%20icon.png" alt=""> Export Data</a>
+            <span class="table-title">Table 1: {tr_("t1_title_inf2")}</span>
+            <a href="{export1_href}" download="infection_by_country.xls" class="export-btn"><img src="/images/export%20icon.png" alt=""> {tr_("btn_export_data")}</a>
         </div>
         <div class="table-wrapper">
             <table class="data-table">
                 <thead><tr>
-                    <th>Preventable disease</th>
-                    {th1("Country", "country_asc", "country_desc")}
-                    {th1("Economic phase", "economy_asc", "economy_desc")}
-                    <th>Year</th>
-                    {th1("Cases", "cases_asc", "cases_desc")}
-                    {th1("Cases per 100k", "rate_asc", "rate_desc")}
+                    <th>{tr_("th_preventable_disease")}</th>
+                    {th1(tr_("th_country"), "country_asc", "country_desc")}
+                    {th1(tr_("th_economic_phase"), "economy_asc", "economy_desc")}
+                    <th>{tr_("th_year")}</th>
+                    {th1(tr_("th_cases"), "cases_asc", "cases_desc")}
+                    {th1(tr_("th_cases_per_100k"), "rate_asc", "rate_desc")}
                 </tr></thead>
                 <tbody>{rows1_html()}</tbody>
             </table>
@@ -461,18 +461,18 @@ def get_page_html(form_data):
 
     t2_panel_content = inactive_msg() if not summary_active else f"""
         <div class="table-header-row">
-            <span class="table-title">Table 2: Infection Summary by Economic Status</span>
-            <a href="{export2_href}" download="infection_by_economic_status.xls" class="export-btn"><img src="/images/export%20icon.png" alt=""> Export Data</a>
+            <span class="table-title">Table 2: {tr_("t2_title_inf2")}</span>
+            <a href="{export2_href}" download="infection_by_economic_status.xls" class="export-btn"><img src="/images/export%20icon.png" alt=""> {tr_("btn_export_data")}</a>
         </div>
         <div class="table-wrapper">
             <table class="data-table">
                 <thead><tr>
-                    <th>Preventable disease</th>
-                    {th2("Economic phase", "economy_asc", "economy_desc")}
-                    <th>Year</th>
-                    {th2("Cases", "cases_asc", "cases_desc")}
-                    <th>Countries</th>
-                    {th2("Average per 100k", "avg_asc", "avg_desc")}
+                    <th>{tr_("th_preventable_disease")}</th>
+                    {th2(tr_("th_economic_phase"), "economy_asc", "economy_desc")}
+                    <th>{tr_("th_year")}</th>
+                    {th2(tr_("th_cases"), "cases_asc", "cases_desc")}
+                    <th>{tr_("th_countries")}</th>
+                    {th2(tr_("th_avg_per_100k"), "avg_asc", "avg_desc")}
                 </tr></thead>
                 <tbody>{rows2_html()}</tbody>
             </table>
@@ -556,7 +556,7 @@ def get_page_html(form_data):
     <img src="/images/showing_result%20icon.png" class="results-icon" alt="">
     <span class="results-label">{tr_("showing_result")}</span>
     {filter_tags}
-    <span class="ready-badge">Ready</span>
+    <span class="ready-badge">{tr_("ready_badge")}</span>
     <span class="results-count">{cnt1} {tr_("countries_found")}</span>
     <span class="results-sep">|</span>
     <span class="results-note">{tr_("last_updated")} {db_min_year}&#8211;{db_max_year}</span>
